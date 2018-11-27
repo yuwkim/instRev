@@ -1,8 +1,8 @@
-% str=input('tell me the text file to analyze:','s');
-% fileID=fopen([strtok(str,'.') '.txt'],'r');
-% You can coment out this to run the code
-fileID=fopen('full_24th_RL.txt','r+t'); %FOR YOUR CONVEINENCE
-data.fileName=fgetl(fileID);
+str=input('tell me the text file to analyze:','s');
+fileID=fopen([strtok(str,'.') '.txt'],'r');
+You can coment out this to run the code
+%fileID=fopen('full_24th_RL.txt','r+t'); %FOR YOUR CONVEINENCE
+%data.fileName=fgetl(fileID);
 
 dataStr=textscan(fileID,'%s %s %s %s','delimiter',':');
 %%
