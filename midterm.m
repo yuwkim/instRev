@@ -3,9 +3,10 @@
 % For a sanity check, this code will run only with a selection of text
 % file.
 %
+clear
 [file,path,indx] = uigetfile('*.txt');
 if isequal(file,0)
-   disp('Data Analysis Aborted')
+   disp('Data Analysis Aborted.')
    return
 elseif ~contains(file,'.txt')
     warning('This only can analyze text files.')
@@ -14,8 +15,18 @@ else
    disp(['Analyzing ', fullfile(path, file)])
 end
 fileID = fopen([path file],'rt');
+tline=fgetl(fileID);
+[pathT,fileT,ext]=fileparts(tline);
+%%
+% another line of sanity checking.
+% if the subject of analysis is not an original text file from my behavior
+% software, the warning message will be appeared, but the process will be
+% going on.
+% 
+if ~contains(file,fileT)
+    warning('this is NOT an original data txt file, the consequence of analysis is on you.')
+end
 dataStr=textscan(fileID,'%s %s %s %s','delimiter',':');
-
 %%
 % read session information
 for i = 1:length(dataStr{1,1})
