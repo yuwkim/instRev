@@ -1,8 +1,14 @@
-str=input('tell me the text file to analyze:','s');
-fileID=fopen([strtok(str,'.') '.txt'],'r');
-You can coment out this to run the code
-%fileID=fopen('full_24th_RL.txt','r+t'); %FOR YOUR CONVEINENCE
-%data.fileName=fgetl(fileID);
+[fileID,path,indx] = uigetfile('*.txt');
+if isequal(fileID,0)
+   disp('Data Analysis Aborted')
+   return
+elseif ~contains(fileID,'.txt')
+    warning('This only can analyze text files.')
+    return
+else
+   disp(['Analyzing ', fullfile(path, fileID)])
+end
+
 
 dataStr=textscan(fileID,'%s %s %s %s','delimiter',':');
 %%
