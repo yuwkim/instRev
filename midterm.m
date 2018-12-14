@@ -1,16 +1,21 @@
-[fileID,path,indx] = uigetfile('*.txt');
-if isequal(fileID,0)
+%%
+% Read a data file
+% For a sanity check, this code will run only with a selection of text
+% file.
+%
+[file,path,indx] = uigetfile('*.txt');
+if isequal(file,0)
    disp('Data Analysis Aborted')
    return
-elseif ~contains(fileID,'.txt')
+elseif ~contains(file,'.txt')
     warning('This only can analyze text files.')
     return
 else
-   disp(['Analyzing ', fullfile(path, fileID)])
+   disp(['Analyzing ', fullfile(path, file)])
 end
-
-
+fileID = fopen([path file],'rt');
 dataStr=textscan(fileID,'%s %s %s %s','delimiter',':');
+
 %%
 % read session information
 for i = 1:length(dataStr{1,1})
