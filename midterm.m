@@ -1,18 +1,18 @@
-%%
-% Read a data file
+%% Read a data file
+% 
 % For a sanity check, this code will run only with a selection of text
 % file.
 %
 clear
 [file,path,indx] = uigetfile('*.txt');
 if isequal(file,0)
-   disp('Data Analysis Aborted.')
-   return
+    disp('Data Analysis Aborted.')
+    return
 elseif ~contains(file,'.txt')
     warning('This only can analyze text files.')
     return
 else
-   disp(['Analyzing ', fullfile(path, file)])
+    disp(['Analyzing ', fullfile(path, file)])
 end
 fileID = fopen([path file],'rt');
 tline=fgetl(fileID);
@@ -20,15 +20,32 @@ tline=fgetl(fileID);
 %%
 % another line of sanity checking.
 % if the subject of analysis is not an original text file from my behavior
-% software, the warning message will be appeared, but the process will be
+% software, the warning message will be appeared, but the process will keep
 % going on.
-% 
+%
 if ~contains(file,fileT)
     warning('this is NOT an original data txt file, the consequence of analysis is on you.')
 end
-dataStr=textscan(fileID,'%s %s %s %s','delimiter',':');
-%%
-% read session information
+%% read session information
+% 
+% 
+while ~contains(tline, 'Start')
+    tline=fgetl(fileID);
+end
+dataOnly=strsplit(tline,':');
+data.date=dataOnly{1,2};
+while ~contains(tline, 'Box:')
+     tline=fgetl(fileID);
+end
+boxNum=strsplit(tline,':');
+data.boxNum=boxNum{1,2};
+while ~contains(tline, 'MSN:')
+     tline=fgetl(fileID);
+end
+programName=strsplit(tline,':');
+data.programName=programName{1,2};
+% dataStr=textscan(fileID,'%s %s %s %s','delimiter',':');
+
 for i = 1:length(dataStr{1,1})
     switch lower(dataStr{1,1}{i,1})
         case 'start date'
@@ -53,7 +70,7 @@ for i = 1:length(dataStr{1,1})
             data.leftPresses=dataStr{1,2}{i,1};
         case 'z'
             data.rightPresses=dataStr{1,2}{i,1};
-        case 'g' % animal's actual choice, 0=omission;1=left;2=right, 
+        case 'g' % animal's actual choice, 0=omission;1=left;2=right,
             choiceIndex=i+2;
         case 'j' % rewarded levers
             rewardIndex=i+2;
@@ -62,6 +79,8 @@ for i = 1:length(dataStr{1,1})
 end
 
 %% read numeric data
+%
+% 
 frewind(fileID)
 dataNum=textscan(fileID,'%s %f %f %f %f %f','headerlines',choiceIndex);
 choice=cell2mat(dataNum(1,2:end));
@@ -81,6 +100,8 @@ scatter(1:length(data.rewardedLever),data.rewardedLever,'filled')
 
 
 %% descriptive statistics
+%
+%
 startSession=datetime(data.startTime);
 endSession=datetime(data.endTime);
 data.sessionTime=endSession-startSession;
