@@ -29,41 +29,15 @@ end
 %% read session information
 %
 %
-data1.date=lineTaker(tline,file,'Start');
-data1.boxNum=lineTaker(tline,file,'Box:');
-data1.programName=lineTaker(tline,file,'MSN:');
-data1.totalTrial=str2double(lineTaker(tline,file,'D:'));
-% while ~contains(tline,'Box:')
-%     tline=fgetl(fileID);
-% end
-% boxNum=strsplit(tline,':');
-% data1.boxNum=boxNum{1,2};
-% while ~contains(tline,'MSN:')
-%     tline=fgetl(fileID);
-% end
-% programName=strsplit(tline,':');
-% data1.programName=programName{1,2};
-% while ~contains(tline,'D:')
-%     tline=fgetl(fileID);
-% end
-% totalTrial=strsplit(tline,':');
-% totalTrial=str2double(totalTrial{1,2});
-% data1.totalTrial=totalTrial;
+data1.date=lineTaker(tline,file,'Start',1);
+data1.boxNum=lineTaker(tline,file,'Box:',1);
+data1.programName=lineTaker(tline,file,'MSN:',1);
+data1.totalTrial=str2double(lineTaker(tline,file,'D:',1));
+data1.totalReward=str2double(lineTaker(tline,file,'Q:',1));
+data1.omission=str2double(lineTaker(tline,file,'R:',1));
 if data1.totalTrial>150 % session ends at >151 trials, so the 151 trial initiated but not completed.
     data1.totalTrial=150;
 end
-while ~contains(tline,'Q:')
-    tline=fgetl(fileID);
-end
-totalReward=strsplit(tline,':');
-totalReward=str2double(totalReward{1,2});
-data1.totalReward=totalReward;
-while ~contains(tline,'R:')
-    tline=fgetl(fileID);
-end
-omission=strsplit(tline,':');
-omission=str2double(omission{1,2});
-data1.omission=omission;
 while ~contains(tline,'X:')
     tline=fgetl(fileID);
 end
@@ -240,12 +214,15 @@ scatter(1:length(data.rewardedLever),data.rewardedLever,'filled')
 startSession=datetime(data.startTime);
 endSession=datetime(data.endTime);
 data.sessionTime=endSession-startSession;
-function output = lineTaker(lineName,fileName,header)
+function output = lineTaker(lineName,fileName,header,num)
 fid = fopen(fileName,'rt');
-while ~contains(lineName,header)
+for i=1:num
+    while ~contains(lineName,header)
+        lineName=fgetl(fid);
+    end
+    dataOnly=strsplit(lineName,':');
+    output=dataOnly{1,2};
     lineName=fgetl(fid);
 end
-dataOnly=strsplit(lineName,':');
-output=dataOnly{1,2};
-fclose(fid);
+    fclose(fid);
 end
