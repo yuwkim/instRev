@@ -27,7 +27,7 @@ if ~contains(file,fileT)
     warning('this is NOT an original data txt file, the consequence of analysis is on you.')
 end
 %% read session information
-%
+% check the linetaker function at the end of the script.
 %
 data1.date=lineTaker(tline,file,'Start',1);
 data1.boxNum=lineTaker(tline,file,'Box:',1);
@@ -35,29 +35,17 @@ data1.programName=lineTaker(tline,file,'MSN:',1);
 data1.totalTrial=str2double(lineTaker(tline,file,'D:',1));
 data1.totalReward=str2double(lineTaker(tline,file,'Q:',1));
 data1.omission=str2double(lineTaker(tline,file,'R:',1));
+data1.totalTimeInSec=str2double(lineTaker(tline,file,'X:',1));
+data1.leftPress=str2double(lineTaker(tline,file,'Y:',1));
+data1.rightPress=str2double(lineTaker(tline,file,'Z:',1));
+%%
+% Let's organize a bit.
+%
 if data1.totalTrial>150 % session ends at >151 trials, so the 151 trial initiated but not completed.
     data1.totalTrial=150;
 end
-while ~contains(tline,'X:')
-    tline=fgetl(fileID);
-end
-totalTime=strsplit(tline,':');
-totalTime=str2double(totalTime{1,2});
-data1.totalTimeInSec=totalTime;
-data1.totalTime=join([string(round(totalTime/60)) 'min' rem(totalTime,60) 'sec']);
-while ~contains(tline,'Y:')
-    tline=fgetl(fileID);
-end
-leftPress=strsplit(tline,':');
-leftPress=str2double(leftPress{1,2});
-data1.leftPress=leftPress;
-while ~contains(tline,'Z:')
-    tline=fgetl(fileID);
-end
-rightPress=strsplit(tline,':');
-rightPress=str2double(rightPress{1,2});
-data1.rightPress=rightPress;
-
+data1.totalTime=join([string(fix(data1.totalTimeInSec/60)) 'min' ...
+    rem(data1.totalTimeInSec,60) 'sec']);
 %% Read numeric data
 % making animal choice data
 %
@@ -214,7 +202,7 @@ scatter(1:length(data.rewardedLever),data.rewardedLever,'filled')
 startSession=datetime(data.startTime);
 endSession=datetime(data.endTime);
 data.sessionTime=endSession-startSession;
-function output = lineTaker(lineName,fileName,header,num)
+function output= lineTaker(lineName,fileName,header,num)
 fid = fopen(fileName,'rt');
 for i=1:num
     while ~contains(lineName,header)
@@ -224,5 +212,5 @@ for i=1:num
     output=dataOnly{1,2};
     lineName=fgetl(fid);
 end
-    fclose(fid);
+fclose(fid);
 end
