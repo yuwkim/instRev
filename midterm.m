@@ -29,27 +29,26 @@ end
 %% read session information
 %
 %
-while ~contains(tline,'Start')
-    tline=fgetl(fileID);
-end
-dataOnly=strsplit(tline,':');
-data1.date=dataOnly{1,2};
-while ~contains(tline,'Box:')
-    tline=fgetl(fileID);
-end
-boxNum=strsplit(tline,':');
-data1.boxNum=boxNum{1,2};
-while ~contains(tline,'MSN:')
-    tline=fgetl(fileID);
-end
-programName=strsplit(tline,':');
-data1.programName=programName{1,2};
-while ~contains(tline,'D:')
-    tline=fgetl(fileID);
-end
-totalTrial=strsplit(tline,':');
-totalTrial=str2double(totalTrial{1,2});
-data1.totalTrial=totalTrial;
+data1.date=lineTaker(tline,file,'Start');
+data1.boxNum=lineTaker(tline,file,'Box:');
+data1.programName=lineTaker(tline,file,'MSN:');
+data1.totalTrial=str2double(lineTaker(tline,file,'D:'));
+% while ~contains(tline,'Box:')
+%     tline=fgetl(fileID);
+% end
+% boxNum=strsplit(tline,':');
+% data1.boxNum=boxNum{1,2};
+% while ~contains(tline,'MSN:')
+%     tline=fgetl(fileID);
+% end
+% programName=strsplit(tline,':');
+% data1.programName=programName{1,2};
+% while ~contains(tline,'D:')
+%     tline=fgetl(fileID);
+% end
+% totalTrial=strsplit(tline,':');
+% totalTrial=str2double(totalTrial{1,2});
+% data1.totalTrial=totalTrial;
 if data1.totalTrial>150 % session ends at >151 trials, so the 151 trial initiated but not completed.
     data1.totalTrial=150;
 end
@@ -241,3 +240,12 @@ scatter(1:length(data.rewardedLever),data.rewardedLever,'filled')
 startSession=datetime(data.startTime);
 endSession=datetime(data.endTime);
 data.sessionTime=endSession-startSession;
+function output = lineTaker(lineName,fileName,header)
+fid = fopen(fileName,'rt');
+while ~contains(lineName,header)
+    lineName=fgetl(fid);
+end
+dataOnly=strsplit(lineName,':');
+output=dataOnly{1,2};
+fclose(fid);
+end
