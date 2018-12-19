@@ -47,147 +47,32 @@ end
 data1.totalTime=join([string(fix(data1.totalTimeInSec/60)) 'min' ...
     rem(data1.totalTimeInSec,60) 'sec']);
 %% Read numeric data
-% making animal choice data
-%
+% (G: array) making animal choice data (0=omission,1=left,2=right)
+% (J: array) making rewarded levers
+% (L: array) making number of rewardss info
 
-while ~contains(tline,'G:')
-    tline=fgetl(fileID);
-end
-nrCul=5; % the Med PC software default value in a result file.
-choiceArray=nan(round(totalTrial./nrCul)+1,nrCul); % +1, because of 0 trial, software's feature=> every var starts with 0.
-for i=1:length(choiceArray)-1
-    tline=fgetl(fileID);
-    rewardByLine=strsplit(tline,':');
-    choiceArray(i,:)=str2num(rewardByLine{1,2});
-end
-% for 150 trial, the demension problem.
-tline=fgetl(fileID);
-rewardByLine=strsplit(tline,':');
-choiceArray(i+1,1)=str2num(rewardByLine{1,2});
-% another sainty check.
-if ~choiceArray(1,1)==0
-    warning('this animal is a hacker! Be careful with data analysis')
-    % there was an issue that animal could hack the behavioral system.
-    % however, the important part of data is not contaminated.
-    % so, it will keep going.
-end
-% make the array as a column vector
-choiceArray(1,1)=nan;
-[m,n]=size(choiceArray);
-revisedChoice=reshape(choiceArray',[m*n,1]);
-revisedChoice(isnan(revisedChoice))=[];
-data1.choice=revisedChoice;
+data1.choice=arrayTaker(tline,file,'G:',1);
+data1.lever=arrayTaker(tline,file,'J:',1);
+data1.reward=arrayTaker(tline,file,'L:',1);
+data1.headEntry=arrayTaker(tline,file,'V:',1);
+data1.pressLever=arrayTaker(tline,file,'W:',1);
 
-%%
-% making rewarded levers
-%
-while ~contains(tline,'J:')
-    tline=fgetl(fileID);
-end
-leverArray=nan(round(totalTrial./nrCul)+1,nrCul); % +1, because of 0 trial, software's feature=> every var starts with 0.
-for j=1:length(leverArray)-1
-    tline=fgetl(fileID);
-    leverByLine=strsplit(tline,':');
-    leverArray(j,:)=str2num(leverByLine{1,2});
-end
-% for 150 trial, the demension problem.
-tline=fgetl(fileID);
-leverByLine=strsplit(tline,':');
-leverArray(j+1,1)=str2num(leverByLine{1,2});
-% make the array as a column vector
-leverArray(1,1)=nan;
-[m,n]=size(leverArray);
-revisedlever=reshape(leverArray',[m*n,1]);
-revisedlever(isnan(revisedlever))=[];
-data1.lever=revisedlever;
 
-%%
-% making number of rewardss info
-%
-while ~contains(tline,'L:')
-    tline=fgetl(fileID);
-end
-rewardArray=nan(round(totalTrial./nrCul)+1,nrCul); % +1, because of 0 trial, software's feature=> every var starts with 0.
-for k=1:length(rewardArray)-1
-    tline=fgetl(fileID);
-    rewardByLine=strsplit(tline,':');
-    rewardArray(k,:)=str2num(rewardByLine{1,2});
-end
-% for 150 trial, the demension problem.
-tline=fgetl(fileID);
-rewardByLine=strsplit(tline,':');
-rewardArray(k+1,1)=str2num(rewardByLine{1,2});
-% make the array as a column vector
-rewardArray(1,1)=nan;
-[m,n]=size(rewardArray);
-revisedreward=reshape(rewardArray',[m*n,1]);
-revisedreward(isnan(revisedreward))=[];
-data1.reward=revisedreward;
 % another sanity check with the same issue when it calculated choice array
 if ~data1.totalReward==sum(data1.reward)
     warning('this animal hacked the system, be careful with data interpretation')
 end
 % reset indeces
-i=1;j=1;k=1; 
 data1.pctCorrect=sum(data1.reward)/(data1.totalTrial-data1.omission);
 tline=fgetl(fileID);
 
 
 
 
-while ~contains(tline,'V:')
-    tline=fgetl(fileID);
-end
-tline=fgetl(fileID);
-tline=fgetl(fileID);
-%%
-% except pct correct, all info will be sorted in the data1.
-
-for i = 1:length(dataStr{1,1})
-    switch lower(dataStr{1,1}{i,1})
-        case 'start date'
-            data.startDate=dataStr{1,2}{i,1};
-        case 'box'
-            data.box=dataStr{1,2}{i,1};
-        case 'start time'
-            data.startTime=[dataStr{1,2}{i,1} ':' dataStr{1,3}{i,1} ':' dataStr{1,4}{i,1}];
-        case 'end time'
-            data.endTime=[dataStr{1,2}{i,1} ':' dataStr{1,3}{i,1} ':' dataStr{1,4}{i,1}];
-        case 'msn'
-            data.programName=dataStr{1,2}{i,1};
-        case 'd'
-            data.totalNrOfTrial=dataStr{1,2}{i,1};
-        case 'p'
-            data.pctCorrect=dataStr{1,2}{i,1};
-        case 'q'
-            data.reward=dataStr{1,2}{i,1};
-        case 'r'
-            data.omission=dataStr{1,2}{i,1};
-        case 'y'
-            data.leftPresses=dataStr{1,2}{i,1};
-        case 'z'
-            data.rightPresses=dataStr{1,2}{i,1};
-        case 'g' % animal's actual choice, 0=omission;1=left;2=right,
-            choiceIndex=i+2;
-        case 'j' % rewarded levers
-            rewardIndex=i+2;
-    end
-    
-end
 
 %% read numeric data
 %
 %
-frewind(fileID)
-dataNum=textscan(fileID,'%s %f %f %f %f %f','headerlines',choiceIndex);
-choiceArray=cell2mat(dataNum(1,2:end));
-data.actualChoice=reshape(choiceArray(1:21,:),[],1);
-
-frewind(fileID)
-dataNum=textscan(fileID,'%s %f %f %f %f %f','headerlines',rewardIndex);
-reward=cell2mat(dataNum(1,2:end));
-data.rewardedLever=reshape(reward(1:21,:),[],1);
-fclose(fileID);
 figure;
 scatter(1:length(data.actualChoice),data.actualChoice)
 hold on
@@ -202,6 +87,11 @@ scatter(1:length(data.rewardedLever),data.rewardedLever,'filled')
 startSession=datetime(data.startTime);
 endSession=datetime(data.endTime);
 data.sessionTime=endSession-startSession;
+
+%% functions
+% lineTaker
+%
+
 function output= lineTaker(lineName,fileName,header,num)
 fid = fopen(fileName,'rt');
 for i=1:num
@@ -213,4 +103,41 @@ for i=1:num
     lineName=fgetl(fid);
 end
 fclose(fid);
+end
+
+% arrayTaker
+
+function output = arrayTaker(lineName,fileName,header,num)
+fid = fopen(fileName,'rt');
+for j=1:num
+    while ~contains(lineName,header)
+        lineName=fgetl(fid);
+    end
+    nrCul=5; % the Med PC software default value in a result file.
+    totalTrial=150;
+    tempArray=nan(round(totalTrial./nrCul)+1,nrCul); % +1, because of 0 trial, software's feature=> every var starts with 0.
+    for i=1:length(tempArray)-1
+        lineName=fgetl(fid);
+        arrayByLine=strsplit(lineName,':');
+        tempArray(i,:)=str2num(arrayByLine{1,2});
+    end
+    % for 150 trial, the demension problem.
+    lineName=fgetl(fid);
+    arrayByLine=strsplit(lineName,':');
+    tempArray(i+1,1)=str2num(arrayByLine{1,2});
+    % another sainty check.
+    if contains(header,'G:') && ~tempArray(1,1)==0
+        warning('this animal is a hacker! Be careful with data analysis')
+        % there was an issue that animal could hack the behavioral system.
+        % however, the important part of data is not contaminated.
+        % so, it will keep going.
+    end
+    % make the array as a column vector
+    tempArray(1,1)=nan;
+    [m,n]=size(tempArray);
+    revisedArray=reshape(tempArray',[m*n,1]);
+    revisedArray(isnan(revisedArray))=[];
+    output=revisedArray;
+    lineName=fgetl(fid);
+end
 end
