@@ -29,9 +29,10 @@ if ~contains(file,fileT)
 end
 
 data=reversalReader(file);
-% wait for it, it takes time, about ~30s?
+% wait for it, it takes time, about ~60s in Mac about ~90s in PC.
+% please run by here, underneath is not completed.
 
-%% read numeric data
+%% read numeric data (from here incompleted)
 %
 %
 figure;
@@ -169,7 +170,7 @@ for j=1:nrAnimals
     data(j).avgRtInSec=mean(data(j).rtIn10ms(data(j).rtIn10ms>0 & data(j).rtIn10ms<3000))./100;
     % omission trial has 0 ms reaction time, so if the animal omitted the
     % trial, the rt will be huge, and it will be screened by indexing them with
-    % <4000.
+    % 0> and <3000.
 end
  output=data;
 end
