@@ -28,7 +28,7 @@ if ~contains(file,fileT)
     warning('Or, if you are using Mac, because of the stupid / and \ issue, you cannot use this sanity check.')
 end
 tagData=strsplit(file,'_');
-[tagData{1,1}]=reversalReader(file);
+data=reversalReader(file);
 % wait for it, it takes time, about ~60s in Mac about ~90s in PC.
 % please run by here, underneath is not completed.
 
@@ -121,7 +121,13 @@ while nrAnimals<nrTotalBoxes
     nrAnimals=nrAnimals+1;
 end
 fclose(fid);
-data=cell(1,nrAnimals);
+flds={'date','boxNum','programName','totalTrial','totalReward','omission',...
+    'totalTimeInSec','leftPress','rightPress','totalTime','choice','lever',...
+    'reward','headEntry','pressLever','pctCorrect','rtIn10ms','avgRtInSec'};
+nrFields=length(flds);
+data=cell(nrFields,nrAnimals);
+data=cell2struct(data,flds);
+% after preallocation, it was 5s faster, wow.
 for j=1:nrAnimals
     %% read session information
     % check the linetaker function at the end of the script.
