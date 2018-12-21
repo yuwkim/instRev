@@ -27,8 +27,8 @@ if ~contains(file,fileT)
     warning('this is NOT an original data txt file, the consequence of analysis is on you.')
     warning('Or, if you are using Mac, because of the stupid / and \ issue, you cannot use this sanity check.')
 end
-
-data=reversalReader(file);
+tagData=strsplit(file,'_');
+[tagData{1,1}]=reversalReader(file);
 % wait for it, it takes time, about ~60s in Mac about ~90s in PC.
 % please run by here, underneath is not completed.
 
@@ -121,7 +121,7 @@ while nrAnimals<nrTotalBoxes
     nrAnimals=nrAnimals+1;
 end
 fclose(fid);
-
+data=cell(1,nrAnimals);
 for j=1:nrAnimals
     %% read session information
     % check the linetaker function at the end of the script.
