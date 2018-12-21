@@ -28,10 +28,10 @@ if ~contains(file,fileT)
     warning('Or, if you are using Mac, because of the stupid / and \ issue, you cannot use this sanity check.')
 end
 tagData=strsplit(file,'_');
+tagData=tagData{1,1};
 data=reversalReader(file);
-save('data');
-warning('dont forget to change the data.mat file. otherwise, it will be overwritten.')
-
+save('data','data','tagData');
+warning('dont forget to change the name of the data.mat file. otherwise, it will be overwritten in the next running.')
 
 % wait for it, it takes time, about ~60s in Mac about ~90s in PC.
 % please run by here, underneath is not completed.
@@ -127,7 +127,7 @@ end
 fclose(fid);
 flds={'date','boxNum','programName','totalTrial','totalReward','omission',...
     'totalTimeInSec','leftPress','rightPress','totalTime','choice','lever',...
-    'reward','headEntry','pressLever','pctCorrect','rtIn10ms','avgRtInSec'};
+    'reward','headEntryTime','pressLeverTime','pctCorrect','rtIn10ms','avgRtInSec'};
 nrFields=length(flds);
 data=cell(nrFields,nrAnimals);
 data=cell2struct(data,flds);
@@ -162,8 +162,8 @@ for j=1:nrAnimals
     data(j).choice=arrayTaker(tline,fileName,'G:',j);
     data(j).lever=arrayTaker(tline,fileName,'J:',j);
     data(j).reward=arrayTaker(tline,fileName,'L:',j);
-    data(j).headEntry=arrayTaker(tline,fileName,'V:',j);
-    data(j).pressLever=arrayTaker(tline,fileName,'W:',j);
+    data(j).headEntryTime=arrayTaker(tline,fileName,'V:',j);
+    data(j).pressLeverTime=arrayTaker(tline,fileName,'W:',j);
     
     
     % another sanity check with the same issue when it calculated choice array
@@ -177,7 +177,7 @@ for j=1:nrAnimals
     % entry to finish the program. In a nutshell, we can get j49 of j50
     % reaction time. Plus, jitter timing of lever extension applied. jitter
     % range = 0.js to js.
-    data(j).rtIn10ms=data(j).pressLever(2:150)-data(j).headEntry(1:149);
+    data(j).rtIn10ms=data(j).pressLeverTime(2:150)-data(j).headEntryTime(1:149);
     data(j).avgRtInSec=mean(data(j).rtIn10ms(data(j).rtIn10ms>0 & data(j).rtIn10ms<3000))./100;
     % omission trial has 0 ms reaction time, so if the animal omitted the
     % trial, the rt will be huge, and it will be screened by indexing them with
