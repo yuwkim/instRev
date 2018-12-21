@@ -29,6 +29,10 @@ if ~contains(file,fileT)
 end
 tagData=strsplit(file,'_');
 data=reversalReader(file);
+save('data');
+warning('dont forget to change the data.mat file. otherwise, it will be overwritten.')
+
+
 % wait for it, it takes time, about ~60s in Mac about ~90s in PC.
 % please run by here, underneath is not completed.
 
@@ -86,7 +90,7 @@ for j=1:num
     % for 150 trial, the demension problem.
     lineName=fgetl(fid);
     arrayByLine=strsplit(lineName,':');
-    tempArray(i+1,1)=str2num(arrayByLine{1,2});
+    tempArray(i+1,1)=str2num(arrayByLine{1,2}); %#ok<*ST2NM>
     % another sainty check.
     if contains(header,'G:') && ~tempArray(1,1)==0
         warning('this animal is a hacker! Be careful with data analysis')
@@ -112,7 +116,7 @@ fid=fopen(fileName,'rt');
 % frewind(fid);
 tline=fgetl(fid);
 nrAnimals=0;
-nrTotalBoxes=12; % physically the number of behavioral chambers in my lab is 12.
+nrTotalBoxes=12; % physically, the number of behavioral chambers in my lab is 12.
 while nrAnimals<nrTotalBoxes
     while ~contains(tline,'Box:')
         tline=fgetl(fid);
@@ -128,6 +132,7 @@ nrFields=length(flds);
 data=cell(nrFields,nrAnimals);
 data=cell2struct(data,flds);
 % after preallocation, it was 5s faster, wow.
+disp(['it is not stopped, just wait a bit, about ' num2str(7*nrAnimals) ' seconds?']);
 for j=1:nrAnimals
     %% read session information
     % check the linetaker function at the end of the script.
@@ -177,6 +182,13 @@ for j=1:nrAnimals
     % omission trial has 0 ms reaction time, so if the animal omitted the
     % trial, the rt will be huge, and it will be screened by indexing them with
     % 0> and <3000.
+    if j>7 && j<nrAnimals-1
+        disp([num2str(j) ' out of ' num2str(nrAnimals) ' is done. I know it is long. Thank you.']);
+    elseif j==nrAnimals-1
+        disp([num2str(j) ' out of ' num2str(nrAnimals) ' is done. Almost done!!']);
+    else
+        disp([num2str(j) ' out of ' num2str(nrAnimals) ' is done. Thank you for your patient.']);
+    end
 end
- output=data;
+output=data;
 end
