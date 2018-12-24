@@ -16,6 +16,11 @@ else
 end
 fileID = fopen([path file],'rt');
 tline=fgetl(fileID);
+if ismac || islinux
+    tlineTemp=strsplit(tline,'\');
+    tline=char(join(tlineTemp,'/'));
+end
+
 [pathT,fileT,ext]=fileparts(tline);
 %%
 % another line of sanity checking.
@@ -25,15 +30,16 @@ tline=fgetl(fileID);
 %
 if ~contains(file,fileT)
     warning('this is NOT an original data txt file, the consequence of analysis is on you.')
-    warning('Or, if you are using Mac, because of the stupid / and \ issue, you cannot use this sanity check.')
 end
 tagData=strsplit(file,'_');
+matFileName=strsplit(file,'.');
 tagData=tagData{1,1};
 data=reversalReader(file);
-save('data','data','tagData');
-warning('dont forget to change the name of the data.mat file. otherwise, it will be overwritten in the next running.')
+save(matFileName{1,1},'data','tagData');
+disp(['The processed data saved as ' matFileName{1,1} '.mat.']);
 
-% wait for it, it takes time, about ~60s in Mac about ~90s in PC.
+% wait for it, it takes time, about ~20s in Mac about ~90s in PC to analyze
+% 12 animals.
 % please run by here, underneath is not completed.
 
 %% read numeric data (from here incompleted)
@@ -132,7 +138,13 @@ nrFields=length(flds);
 data=cell(nrFields,nrAnimals);
 data=cell2struct(data,flds);
 % after preallocation, it was 5s faster, wow.
-disp(['it is not stopped, just wait a bit, about ' num2str(7*nrAnimals) ' seconds?']);
+if ismac
+    disp(['it will not that be long, just wait a bit, about ' num2str(1.5.*nrAnimals) ' seconds?']);
+elseif islinux
+    disp('I havent run it on Linux, but it will not be long.');
+else
+    disp(['it is not stopped, just wait a bit, about ' num2str(7*nrAnimals) ' seconds?']);
+end
 for j=1:nrAnimals
     %% read session information
     % check the linetaker function at the end of the script.
