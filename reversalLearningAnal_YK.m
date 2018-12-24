@@ -185,10 +185,10 @@ for j=1:nrAnimals
     % reset indeces
     data(j).pctCorrect=sum(data(j).reward)/(data(j).totalTrial-data(j).omission);
     % nose poke to press lever, because of the medpc coding, a variable
-    % starts with 0, there is 0 trial for head entry (nose poke) and j5jth head
-    % entry to finish the program. In a nutshell, we can get j49 of j50
+    % starts with 0, there is 0 trial for head entry (nose poke) and 151th head
+    % entry to finish the program. In a nutshell, we can get 149 of 150
     % reaction time. Plus, jitter timing of lever extension applied. jitter
-    % range = 0.js to js.
+    % range = 0.1s to 1s.
     data(j).rtIn10ms=data(j).pressLeverTime(2:150)-data(j).headEntryTime(1:149);
     data(j).avgRtInSec=mean(data(j).rtIn10ms(data(j).rtIn10ms>0 & data(j).rtIn10ms<3000))./100;
     % omission trial has 0 ms reaction time, so if the animal omitted the
