@@ -16,7 +16,8 @@ else
 end
 fileID = fopen([path file],'rt');
 tline=fgetl(fileID);
-if ismac || islinux
+% by doing this, the code will work on Mac and PC the same.
+if ismac || isunix
     tlineTemp=strsplit(tline,'\');
     tline=char(join(tlineTemp,'/'));
 end
@@ -40,18 +41,18 @@ disp(['The processed data saved as ' matFileName{1,1} '.mat.']);
 
 % wait for it, it takes time, about ~20s in Mac about ~90s in PC to analyze
 % 12 animals.
-% please run by here, underneath is not completed.
 
-%% read numeric data (from here incompleted)
+fclose(fileID);
+% Data reading done, analyzing starts
+
+%% data reformation for analyzation.
 %
 %
-figure;
-scatter(1:length(data.actualChoice),data.actualChoice)
-hold on
-scatter(1:length(data.rewardedLever),data.rewardedLever,'filled')
-
-
-
+a=[data(1).choice data(1).lever data(1).reward];
+b=data(1).reward(data(1).lever==1);
+c=data(1).reward(data(1).lever==2);
+d=sum(b)/length(b);
+e=sum(c)/length(c);
 
 %% descriptive statistics
 %
@@ -140,7 +141,7 @@ data=cell2struct(data,flds);
 % after preallocation, it was 5s faster, wow.
 if ismac
     disp(['it will not that be long, just wait a bit, about ' num2str(1.5.*nrAnimals) ' seconds?']);
-elseif islinux
+elseif isunix
     disp('I havent run it on Linux, but it will not be long.');
 else
     disp(['it is not stopped, just wait a bit, about ' num2str(7*nrAnimals) ' seconds?']);
