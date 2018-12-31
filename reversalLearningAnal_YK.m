@@ -35,8 +35,21 @@ end
 tagData=strsplit(file,'_');
 matFileName=strsplit(file,'.');
 tagData=tagData{1,1};
-data=reversalReader(file);
-save(matFileName{1,1},'data','tagData');
+
+[data,hackerAnimal]=reversalReader(file);
+if ~isempty(hackerAnimal) % temporary will be revised later
+    switch length(hackerAnimal)
+        case 1
+            a='is animal';
+        otherwise
+            a='are animals';
+    end
+    warning(['There ' a ' hacked the program, box number: ' data(hackerAnimal).boxNum])
+    save(matFileName{1,1},'data','tagData','hackerAnimal');
+else
+    save(matFileName{1,1},'data','tagData')
+end
+
 disp(['The processed data saved as ' matFileName{1,1} '.mat.']);
 
 % wait for it, it takes time, about ~20s in Mac about ~90s in PC to analyze
@@ -48,18 +61,37 @@ fclose(fileID);
 %% data reformation for analyzation.
 %
 %
-a=[data(1).choice data(1).lever data(1).reward];
-b=data(1).reward(data(1).lever==1);
-c=data(1).reward(data(1).lever==2);
-d=sum(b)/length(b);
-e=sum(c)/length(c);
 
+% behavior program version check.
+
+
+% 1. Pct correct during right lever or left lever
+anal(1).rightPressReward=data(1).reward(data(1).lever==1); % 1=left
+anal(1).leftPressReward=data(1).reward(data(1).lever==2); % 2=right this is in the behavior program code
+anal(1).pctCorRight=sum(anal(1).rightPressReward)/length(anal(1).rightPressReward);
+anal(1).pctCorLeft=sum(anal(1).leftPressReward)/length(anal(1).leftPressReward);
+if ttest2(anal(1).rightPressReward, anal(1).leftPressReward)
+    if anal(1).pctCorRight>anal(1).pctCorLeft
+        anal(1).biasedLever='Right Biased';
+    else
+        anal(1).biasedLever='Left Biased';
+    end
+else
+    anal(1).biasedLever='None';
+end
+
+% 2. one sample T-test, animals got right not by chance
+meanStraightAhead = mean(data(2).reward);
+n = hist(meanStraightAhead,eyePosBins);
+cumulative = cumsum(n)/nrRepeats;
+ix = find(meanEyePosition<eyePosBins,1,'first');
+pIntersect = cumulative(ix);
+pValuesignificanceSimulated = 1-pIntersect;
+
+[~,pValue] = ttest(data(2).reward,[],'tail',1);
 %% descriptive statistics
 %
 %
-startSession=datetime(data.startTime);
-endSession=datetime(data.endTime);
-data.sessionTime=endSession-startSession;
 
 %% functions
 % lineTaker
@@ -80,8 +112,10 @@ end
 
 % arrayTaker
 
-function output = arrayTaker(lineName,fileName,header,num)
+function [outputArray,hackerAnimal] = arrayTaker(lineName,fileName,header,num)
 fid = fopen(fileName,'rt');
+maxNumAnimal=12; % physically, my lab has 12 boxes.
+hackerAnimal=nan(1,maxNumAnimal);
 for j=1:num
     while ~contains(lineName,header)
         lineName=fgetl(fid);
@@ -100,17 +134,16 @@ for j=1:num
     tempArray(i+1,1)=str2num(arrayByLine{1,2}); %#ok<*ST2NM>
     % another sainty check.
     if contains(header,'G:') && ~tempArray(1,1)==0
-        warning('this animal is a hacker! Be careful with data analysis')
-        % there was an issue that animal could hack the behavioral system.
-        % however, the important part of data is not contaminated.
-        % so, it will keep going.
+        hackerAnimal(1,j)=j;
     end
     % make the array as a column vector
     tempArray(1,1)=nan;
     [m,n]=size(tempArray);
     revisedArray=reshape(tempArray',[m*n,1]);
     revisedArray(isnan(revisedArray))=[];
-    output=revisedArray;
+    outputArray=revisedArray;
+    hackerAnimal(isnan(hackerAnimal))=[];
+    hackerAnimal((hackerAnimal==0))=[];
     lineName=fgetl(fid);
 end
 fclose(fid);
@@ -118,7 +151,7 @@ end
 
 % reversalReader
 
-function output= reversalReader(fileName)
+function [output,hackerAnimal]= reversalReader(fileName)
 fid=fopen(fileName,'rt');
 % frewind(fid);
 tline=fgetl(fid);
@@ -172,7 +205,7 @@ for j=1:nrAnimals
     % (J: array) making rewarded levers
     % (L: array) making number of rewardss info
     %
-    data(j).choice=arrayTaker(tline,fileName,'G:',j);
+    [data(j).choice,hackerAnimal]=arrayTaker(tline,fileName,'G:',j);
     data(j).lever=arrayTaker(tline,fileName,'J:',j);
     data(j).reward=arrayTaker(tline,fileName,'L:',j);
     data(j).headEntryTime=arrayTaker(tline,fileName,'V:',j);
@@ -195,12 +228,14 @@ for j=1:nrAnimals
     % omission trial has 0 ms reaction time, so if the animal omitted the
     % trial, the rt will be huge, and it will be screened by indexing them with
     % 0> and <3000.
-    if j>7 && j<nrAnimals-1
-        disp([num2str(j) ' out of ' num2str(nrAnimals) ' is done. I know it is long. Thank you.']);
-    elseif j==nrAnimals-1
-        disp([num2str(j) ' out of ' num2str(nrAnimals) ' is done. Almost done!!']);
-    else
+    if j==1
         disp([num2str(j) ' out of ' num2str(nrAnimals) ' is done. Thank you for your patient.']);
+    elseif j>7 && j<nrAnimals-1
+        disp([num2str(j) ' out of ' num2str(nrAnimals) ' are done. I know it is long. Thank you.']);
+    elseif j==nrAnimals-1
+        disp([num2str(j) ' out of ' num2str(nrAnimals) ' are done. Almost done!!']);
+    else
+        disp([num2str(j) ' out of ' num2str(nrAnimals) ' are done. Thank you for your patient.']);
     end
 end
 output=data;
