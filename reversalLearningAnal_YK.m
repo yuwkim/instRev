@@ -40,11 +40,11 @@ tagData=tagData{1,1};
 if ~isempty(hackerAnimal) % temporary will be revised later
     switch length(hackerAnimal)
         case 1
-            a='is animal';
+            be='is animal';
         otherwise
-            a='are animals';
+            be='are animals';
     end
-    warning(['There ' a ' hacked the program, box number: ' data(hackerAnimal).boxNum])
+    warning(['Zerotrial response! There ' be ' hacked the program, box number: ' data(hackerAnimal).boxNum])
     save(matFileName{1,1},'data','tagData','hackerAnimal');
 else
     save(matFileName{1,1},'data','tagData')
@@ -63,32 +63,40 @@ fclose(fileID);
 %
 
 % behavior program version check.
-
-
-% 1. Pct correct during right lever or left lever
-anal(1).rightPressReward=data(1).reward(data(1).lever==1); % 1=left
-anal(1).leftPressReward=data(1).reward(data(1).lever==2); % 2=right this is in the behavior program code
-anal(1).pctCorRight=sum(anal(1).rightPressReward)/length(anal(1).rightPressReward);
-anal(1).pctCorLeft=sum(anal(1).leftPressReward)/length(anal(1).leftPressReward);
-if ttest2(anal(1).rightPressReward, anal(1).leftPressReward)
-    if anal(1).pctCorRight>anal(1).pctCorLeft
-        anal(1).biasedLever='Right Biased';
-    else
-        anal(1).biasedLever='Left Biased';
-    end
-else
-    anal(1).biasedLever='None';
+versionChecker=nan(length(data),1);
+for i=1:length(data)
+    versionChecker(i,1)=data(i).leftPress+data(i).rightPress+data(i).omission;
+end
+if any(~(versionChecker==150))
+    warning('this result file was from an old version before dealing with hacking issue.')
 end
 
-% 2. one sample T-test, animals got right not by chance
-meanStraightAhead = mean(data(2).reward);
-n = hist(meanStraightAhead,eyePosBins);
-cumulative = cumsum(n)/nrRepeats;
-ix = find(meanEyePosition<eyePosBins,1,'first');
-pIntersect = cumulative(ix);
-pValuesignificanceSimulated = 1-pIntersect;
 
-[~,pValue] = ttest(data(2).reward,[],'tail',1);
+
+
+for i=1:length(data)
+    % 1. Pct correct during right lever or left lever
+    anal(i).rightPressReward=data(i).reward(data(i).lever==1); % 1=left
+    anal(i).leftPressReward=data(i).reward(data(i).lever==2); % 2=right this is in the behavior program code
+    anal(i).pctCorRight=sum(anal(i).rightPressReward)/length(anal(i).rightPressReward);
+    anal(i).pctCorLeft=sum(anal(i).leftPressReward)/length(anal(i).leftPressReward);
+    if ttest2(anal(i).rightPressReward, anal(i).leftPressReward)
+        if anal(i).pctCorRight>anal(i).pctCorLeft
+            anal(i).biasedLever='Right Biased';
+        else
+            anal(i).biasedLever='Left Biased';
+        end
+    else
+        anal(i).biasedLever='None';
+    end
+    
+    % 2. one sample T-test, animals got right not by chance
+    compRandom=repmat([0;1],length(data(i).reward)/2,1);
+    [anal(i).oneSampleH,anal(i).oneSampleP] = ttest(data(i).reward,compRandom);
+end
+% anotherCompRandom=ones(150,1);
+% anotherCompRandom(1:(length(data(11).reward)/2),1)=0;
+% [anotherH,anotherP] = ttest(data(11).reward,anotherCompRandom);
 %% descriptive statistics
 %
 %
@@ -213,8 +221,8 @@ for j=1:nrAnimals
     
     
     % another sanity check with the same issue when it calculated choice array
-    if ~data(j).totalReward==sum(data(j).reward)
-        warning(['animal in the box' data(j).boxNum ' hacked the system, be careful with data interpretation'])
+    if ~(data(j).totalReward==sum(data(j).reward))
+        warning(['More pressing than total trials! Animal in the box' data(j).boxNum ' hacked the system, be careful with data interpretation'])
     end
     % reset indeces
     data(j).pctCorrect=sum(data(j).reward)/(data(j).totalTrial-data(j).omission);
@@ -223,20 +231,22 @@ for j=1:nrAnimals
     % entry to finish the program. In a nutshell, we can get 149 of 150
     % reaction time. Plus, jitter timing of lever extension applied. jitter
     % range = 0.1s to 1s.
-    data(j).rtIn10ms=data(j).pressLeverTime(2:150)-data(j).headEntryTime(1:149);
+    data(j).rtIn10ms=data(j).pressLeverTime(2:length(data(j).pressLeverTime))-data(j).headEntryTime(1:length(data(j).headEntryTime)-1);
     data(j).avgRtInSec=mean(data(j).rtIn10ms(data(j).rtIn10ms>0 & data(j).rtIn10ms<3000))./100;
     % omission trial has 0 ms reaction time, so if the animal omitted the
     % trial, the rt will be huge, and it will be screened by indexing them with
     % 0> and <3000.
-    if j==1
-        disp([num2str(j) ' out of ' num2str(nrAnimals) ' is done. Thank you for your patient.']);
-    elseif j>7 && j<nrAnimals-1
-        disp([num2str(j) ' out of ' num2str(nrAnimals) ' are done. I know it is long. Thank you.']);
-    elseif j==nrAnimals-1
-        disp([num2str(j) ' out of ' num2str(nrAnimals) ' are done. Almost done!!']);
-    else
-        disp([num2str(j) ' out of ' num2str(nrAnimals) ' are done. Thank you for your patient.']);
+    be='are';
+    patientMessage='Thank you for your patient.';
+    switch j
+        case 1
+            be='is';
+        case j>7 && j<nrAnimals-1
+            patientMessage='I know it is long. Thank you.';
+        case j==nrAnimals-1
+            patientMessage='Almost done!!';
     end
+    disp([num2str(j) ' out of ' num2str(nrAnimals) ' ' be ' done.' patientMessage]);
 end
 output=data;
 end
