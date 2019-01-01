@@ -93,6 +93,15 @@ for i=1:length(data)
     % 2. one sample T-test, animals got right not by chance
     compRandom=repmat([0;1],length(data(i).reward)/2,1);
     [anal(i).oneSampleH,anal(i).oneSampleP] = ttest(data(i).reward,compRandom);
+    % 3. number of switching rewarded levers.
+    nrSwitching=0;
+    for j=1:length(data(i).lever)-1
+        a=data(i).lever(j+1,1)-data(i).lever(j,1);
+        if ~(a==0)
+            nrSwitching=nrSwitching+1;
+        end
+        anal(i).nrSwitching=nrSwitching;
+    end
 end
 % anotherCompRandom=ones(150,1);
 % anotherCompRandom(1:(length(data(11).reward)/2),1)=0;
@@ -245,7 +254,7 @@ for j=1:nrAnimals
     elseif j==nrAnimals-1
         patientMessage='Almost done!!';
     end
-    disp([num2str(j) ' out of ' num2str(nrAnimals) ' ' be ' done.' patientMessage]);
+    disp([num2str(j) ' out of ' num2str(nrAnimals) ' ' be ' done. ' patientMessage]);
 end
 output=data;
 end
