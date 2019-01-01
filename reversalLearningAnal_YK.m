@@ -238,13 +238,12 @@ for j=1:nrAnimals
     % 0> and <3000.
     be='are';
     patientMessage='Thank you for your patient.';
-    switch j
-        case 1
-            be='is';
-        case j>7 && j<nrAnimals-1
-            patientMessage='I know it is long. Thank you.';
-        case j==nrAnimals-1
-            patientMessage='Almost done!!';
+    if j==1
+        be='is';
+    elseif j>7 && j<nrAnimals-1
+        patientMessage='I know it is long. Thank you.';
+    elseif j==nrAnimals-1
+        patientMessage='Almost done!!';
     end
     disp([num2str(j) ' out of ' num2str(nrAnimals) ' ' be ' done.' patientMessage]);
 end
