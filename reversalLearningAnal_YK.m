@@ -92,27 +92,23 @@ for i=1:length(data)
     
     % 2. one sample T-test, animals got right not by chance
     compRandom=repmat([0;1],length(data(i).reward)/2,1);
-    [anal(i).oneSampleH,anal(i).oneSampleP] = ttest(data(i).reward,compRandom);
+    [anal(i).oneSampleH,anal(i).oneSampleP] = ttest(data(i).reward,compRandom,'Tail','right');
     % 3. number of switching rewarded levers.
     switching=diff(data(i).lever);
     anal(i).switching=switching;
     switching(switching==0)=[];
     anal(i).nrSwitching=length(switching);
-    % 4. lever pressing probability
+    % 4. lever pressing probability before and after switching
     switchingTrials=find(anal(i).switching);
-    
-    % switchingTrials(switchingTrials>140)=[]; % not enough amount of trials to test
-    if anal(i).switching(switchingTrials(1,1),1)>0 % left->right switching
-    
-    end
-    
+    binSize=8;
+    switchingTrials(switchingTrials>data(i).totalTrial-binSize)=[]; % not enough amount of trials to test
+    switchingInd=repmat(switchingTrials,[1 2*binSize+1])+repmat(-binSize:1:binSize,[length(switchingTrials) 1]);
+    anal(i).probSwitches=(data(i).reward(switchingInd));
+%     if anal(i).switching(switchingTrials(1,1),1)>0 % left->right switching
+%     
+%     end
+%     
 end
-% anotherCompRandom=ones(150,1);
-% anotherCompRandom(1:(length(data(11).reward)/2),1)=0;
-% [anotherH,anotherP] = ttest(data(11).reward,anotherCompRandom);
-%% descriptive statistics
-%
-%
 
 %% functions
 % lineTaker
