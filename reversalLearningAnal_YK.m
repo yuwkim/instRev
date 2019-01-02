@@ -94,14 +94,18 @@ for i=1:length(data)
     compRandom=repmat([0;1],length(data(i).reward)/2,1);
     [anal(i).oneSampleH,anal(i).oneSampleP] = ttest(data(i).reward,compRandom);
     % 3. number of switching rewarded levers.
-    nrSwitching=0;
-    for j=1:length(data(i).lever)-1
-        a=data(i).lever(j+1,1)-data(i).lever(j,1);
-        if ~(a==0)
-            nrSwitching=nrSwitching+1;
-        end
-        anal(i).nrSwitching=nrSwitching;
+    switching=diff(data(i).lever);
+    anal(i).switching=switching;
+    switching(switching==0)=[];
+    anal(i).nrSwitching=length(switching);
+    % 4. lever pressing probability
+    switchingTrials=find(anal(i).switching);
+    
+    % switchingTrials(switchingTrials>140)=[]; % not enough amount of trials to test
+    if anal(i).switching(switchingTrials(1,1),1)>0 % left->right switching
+    
     end
+    
 end
 % anotherCompRandom=ones(150,1);
 % anotherCompRandom(1:(length(data(11).reward)/2),1)=0;
