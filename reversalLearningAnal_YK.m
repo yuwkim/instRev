@@ -1,11 +1,18 @@
-%% Read a data file
+%% load data file
 %
-% For a sanity check, this code will run only with a selection of text
+% For a sanity check, this code will run only with a selection of a text
 % file.
 %
 clear
+% I thought for some users who are not familiar with coding the origin of
+% warning msg is not informative but a distraction.
+%
 warning('off','backtrace')
 [file,path,indx] = uigetfile('*.txt');
+% if the user did not choose a txt file to analyze, the script will be
+% stopped runing. If the chosen file is not a txt file, it will also stop,
+% saying to choose a txt file.
+%
 if isequal(file,0)
     disp('Data Analysis Aborted.')
     return
@@ -15,34 +22,52 @@ elseif ~contains(file,'.txt')
 else
     disp(['Analyzing ', fullfile(path, file)])
 end
+% the subject of analyzation will be appeard.
+%
 fileID = fopen([path file],'rt');
 tline=fgetl(fileID);
-% by doing this, the code will work on Mac and PC the same.
+% by doing this, the code will work on Mac including linux and PC the same.
+%
 if ismac || isunix
     tlineTemp=strsplit(tline,'\');
     tline=char(join(tlineTemp,'/'));
 end
-
 [pathT,fileT,ext]=fileparts(tline);
-%%
-% another line of sanity checking.
-% if the subject of analysis is not an original text file from my behavior
-% software, the warning message will be appeared, but the process will keep
-% going on.
+
+%% Saving results
+% for taging the data. Let's take the date information from the data file.
+% and this information will be used to name the result mat file.
 %
-if ~contains(file,fileT)
-    warning('this is NOT an original data txt file, the consequence of analysis is on you.')
-end
 tagData=strsplit(file,'_');
 matFileName=strsplit(file,'.');
 tagData=tagData{1,1};
 
+%%
+% reading the data file by 'reversalReader' function.
+% it will make data struct which has organized basic raw data and a list of
+% animals using a bug of behavioral program.
+%
 [data,hackerAnimal]=reversalReader(file);
+%%
+% analyze the read data by 'reversalAnalyzer' function.
+% the output struct 'anal' will have basic analyzed information like biased
+% lever, onesample ttest, numbers of switching lever.
+%
 anal=reversalAnalyzer(data);
+%%
+% use logistic regression model for analyzing and modeling the behavior of
+% animals with 'logsticRegression' function.
+% logistic regression provides that whether the animal updated the
+% information from previous trials. Motivated from Parker et al., 2016.
+%
+%
 [model,betaValuesInMat,rSquared,p,h]=logisticRegression(data);
 
-
-if ~isempty(hackerAnimal) % temporary will be revised later
+%%
+% By the unidentified bug, animals could hack the behavior program. It was
+% a retracted lever pressing.
+%
+if ~isempty(hackerAnimal)
     switch length(hackerAnimal)
         case 1
             be='is animal';
@@ -50,24 +75,39 @@ if ~isempty(hackerAnimal) % temporary will be revised later
             be='are animals';
     end
     warning(['Zerotrial response! There ' be ' hacked the program, box number: ' data(hackerAnimal).boxNum])
-    save(matFileName{1,1},'data','anal','model','tagData','hackerAnimal');
+    save(matFileName{1,1},'data','anal','model','tagData','h','p','betaValuesInMat','rSquared','hackerAnimal');
 else
-    save(matFileName{1,1},'data','anal','model','tagData')
+    save(matFileName{1,1},'data','anal','model','tagData','h','p','betaValuesInMat','rSquared');
 end
 
 disp(['The processed data saved as ' matFileName{1,1} '.mat.']);
-
-% wait for it, it takes time, about ~20s in Mac about ~90s in PC to analyze
-% 12 animals.
-
+% Data reading done.
+% 
 fclose(fileID);
-% Data reading done, analyzing starts
 
-%% data reformation for analyzation.
+%% Sanity checking
+% one sanity checking.
+% if the subject of analysis is not an original text file from my behavior
+% software, the warning message will be appeared, but the process will keep
+% going on.
+% this works because, the original data file from MED-PC software always
+% includes information like this in the first line of the data file
 %
+% File: C:\MED-PC\Data\2018-11-16_15h09m_Subject .txt
 %
-
+% And, this info is supposed to match with the title of the data file.
+%
+if ~contains(file,fileT)
+    warning('this is NOT an original data txt file, the consequence of analysis is on you.')
+end
+%%
+% another sanity check.
 % behavior program version check.
+% using old version of behavior controlling program, by far there is no
+% issue other than pressing retracted lever--hacking behavior. This was
+% confirmed by video recording during behavior session.
+% However, just in case, I provided this info, too.
+%
 versionChecker=nan(length(data),1);
 for i=1:length(data)
     versionChecker(i,1)=data(i).leftPress+data(i).rightPress+data(i).omission;
@@ -77,10 +117,26 @@ if any(~(versionChecker==150))
 end
 
 %% functions
+%
 % lineTaker
 %
 
 function output= lineTaker(lineName,fileName,header,num)
+% This is a function to sort a type of data like this .
+%
+% Start Date: 12/06/18
+%
+% this function will take the part after ':', in this example, 12/06/18.
+%
+% Inputs
+% lineName: a line of information, a subject of the function.
+% fileName: a name of the file, which contains the line--the subject of the 
+%           function.
+% header  : a part of the line before ':', in this example, Start Date.
+% num     : a number of repeating, up to 12 animals' behavioral data can be
+%           recorded per day. repeat twice= 2nd animal's data, repeat
+%           triple= 3rd animal's data. Saving multiple animals' data is out
+%           of my control, default setting of MED-PC software.
 fid = fopen(fileName,'rt');
 for i=1:num
     while ~contains(lineName,header)
@@ -95,25 +151,55 @@ end
 
 % arrayTaker
 
-function [outputArray,hackerAnimal] = arrayTaker(lineName,fileName,header,num)
+function [outputArray,hackerAnimal] = arrayTaker(arrayName,fileName,header,num)
+% This is a function to sort a type of data like this .
+%
+% G:
+%      0:        0.000        2.000        2.000        2.000        1.000
+%      5:        2.000        2.000        1.000        2.000        2.000
+%     10:        2.000        2.000        1.000        1.000        2.000
+%     15:        1.000        2.000        1.000        1.000        2.000
+%     ....(continues...)
+%
+% (name of array) 
+% G:
+% (row number indicator)
+% 0:
+% 5:
+% 10:
+% (real data)
+%  0.000        2.000        2.000        2.000        1.000 ... ...
+% this function will only take a part of real data.
+% 
+% Inputs
+% arrayName: an array of information, a subject of the function 
+% fileName: a name of the file, which contains the array--the subject of 
+%           the function.
+% header  : a part of the line before ':', in this example, G:, a name of
+%           array.
+% num     : a number of repeating, up to 12 animals' behavioral data can be
+%           recorded per day. repeat twice= 2nd animal's data, repeat
+%           triple= 3rd animal's data. Saving multiple animals' data is out
+%           of my control, default setting of MED-PC software.
 fid = fopen(fileName,'rt');
 maxNumAnimal=12; % physically, my lab has 12 boxes.
 hackerAnimal=nan(1,maxNumAnimal);
 for j=1:num
-    while ~contains(lineName,header)
-        lineName=fgetl(fid);
+    while ~contains(arrayName,header)
+        arrayName=fgetl(fid);
     end
     nrCul=5; % the Med PC software default value in a result file.
-    totalTrial=str2double(lineTaker(lineName,fileName,'D:',num))-1;
-    tempArray=nan(round(totalTrial./nrCul)+1,nrCul); % +1, because of 0 trial, software's feature=> every var starts with 0.
-    for i=1:length(tempArray)-1
-        lineName=fgetl(fid);
-        arrayByLine=strsplit(lineName,':');
+    totalTrial=str2double(lineTaker(arrayName,fileName,'D:',num))-1;
+    % +1, because of 0 trial, software's feature=> every var starts with 0.
+    tempArray=nan(round(totalTrial./nrCul)+1,nrCul);
+        for i=1:length(tempArray)-1
+        arrayName=fgetl(fid);
+        arrayByLine=strsplit(arrayName,':');
         tempArray(i,:)=str2num(arrayByLine{1,2});
     end
     % for 150 trial, the demension problem.
-    lineName=fgetl(fid);
-    arrayByLine=strsplit(lineName,':');
+    arrayName=fgetl(fid);
+    arrayByLine=strsplit(arrayName,':');
     tempArray(i+1,1)=str2num(arrayByLine{1,2}); %#ok<*ST2NM>
     % another sainty check.
     if contains(header,'G:') && ~tempArray(1,1)==0
@@ -127,7 +213,7 @@ for j=1:num
     outputArray=revisedArray;
     hackerAnimal(isnan(hackerAnimal))=[];
     hackerAnimal((hackerAnimal==0))=[];
-    lineName=fgetl(fid);
+    arrayName=fgetl(fid);
 end
 fclose(fid);
 end
