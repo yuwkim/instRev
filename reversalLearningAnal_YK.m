@@ -4,6 +4,7 @@
 % file.
 %
 clear
+warning('off','backtrace')
 [file,path,indx] = uigetfile('*.txt');
 if isequal(file,0)
     disp('Data Analysis Aborted.')
@@ -37,6 +38,10 @@ matFileName=strsplit(file,'.');
 tagData=tagData{1,1};
 
 [data,hackerAnimal]=reversalReader(file);
+anal=reversalAnalyzer(data);
+[model,betaValuesInMat,rSquared,p,h]=logisticRegression(data);
+
+
 if ~isempty(hackerAnimal) % temporary will be revised later
     switch length(hackerAnimal)
         case 1
@@ -45,9 +50,9 @@ if ~isempty(hackerAnimal) % temporary will be revised later
             be='are animals';
     end
     warning(['Zerotrial response! There ' be ' hacked the program, box number: ' data(hackerAnimal).boxNum])
-    save(matFileName{1,1},'data','tagData','hackerAnimal');
+    save(matFileName{1,1},'data','anal','tagData','hackerAnimal');
 else
-    save(matFileName{1,1},'data','tagData')
+    save(matFileName{1,1},'data','anal','tagData')
 end
 
 disp(['The processed data saved as ' matFileName{1,1} '.mat.']);
@@ -68,46 +73,7 @@ for i=1:length(data)
     versionChecker(i,1)=data(i).leftPress+data(i).rightPress+data(i).omission;
 end
 if any(~(versionChecker==150))
-    warning('this result file was from an old version before dealing with hacking issue.')
-end
-
-
-
-
-for i=1:length(data)
-    % 1. Pct correct during right lever or left lever
-    anal(i).rightPressReward=data(i).reward(data(i).lever==1); % 1=left
-    anal(i).leftPressReward=data(i).reward(data(i).lever==2); % 2=right this is in the behavior program code
-    anal(i).pctCorRight=sum(anal(i).rightPressReward)/length(anal(i).rightPressReward);
-    anal(i).pctCorLeft=sum(anal(i).leftPressReward)/length(anal(i).leftPressReward);
-    if ttest2(anal(i).rightPressReward, anal(i).leftPressReward)
-        if anal(i).pctCorRight>anal(i).pctCorLeft
-            anal(i).biasedLever='Right Biased';
-        else
-            anal(i).biasedLever='Left Biased';
-        end
-    else
-        anal(i).biasedLever='None';
-    end
-    
-    % 2. one sample T-test, animals got right not by chance
-    compRandom=repmat([0;1],length(data(i).reward)/2,1);
-    [anal(i).oneSampleH,anal(i).oneSampleP] = ttest(data(i).reward,compRandom,'Tail','right');
-    % 3. number of switching rewarded levers.
-    switching=diff(data(i).lever);
-    anal(i).switching=switching;
-    switching(switching==0)=[];
-    anal(i).nrSwitching=length(switching);
-    % 4. lever pressing probability before and after switching
-    switchingTrials=find(anal(i).switching);
-    binSize=8;
-    switchingTrials(switchingTrials>data(i).totalTrial-binSize)=[]; % not enough amount of trials to test
-    switchingInd=repmat(switchingTrials,[1 2*binSize+1])+repmat(-binSize:1:binSize,[length(switchingTrials) 1]);
-    anal(i).probSwitches=(data(i).reward(switchingInd));
-%     if anal(i).switching(switchingTrials(1,1),1)>0 % left->right switching
-%     
-%     end
-%     
+    disp('this result file was from an old version before dealing with hacking issue.')
 end
 
 %% functions
@@ -170,7 +136,6 @@ end
 
 function [output,hackerAnimal]= reversalReader(fileName)
 fid=fopen(fileName,'rt');
-% frewind(fid);
 tline=fgetl(fid);
 nrAnimals=0;
 nrTotalBoxes=12; % physically, the number of behavioral chambers in my lab is 12.
@@ -188,7 +153,8 @@ flds={'date','boxNum','programName','totalTrial','totalReward','omission',...
 nrFields=length(flds);
 data=cell(nrFields,nrAnimals);
 data=cell2struct(data,flds);
-% after preallocation, it was 5s faster, wow.
+% after preallocation, it was 5s faster in PC, wow.
+% In Mac, slightly faster.
 if ismac
     disp(['it will not that be long, just wait a bit, about ' num2str(1.5.*nrAnimals) ' seconds?']);
 elseif isunix
@@ -257,4 +223,112 @@ for j=1:nrAnimals
     disp([num2str(j) ' out of ' num2str(nrAnimals) ' ' be ' done. ' patientMessage]);
 end
 output=data;
+end
+
+% reversalAnalyzer
+
+function output = reversalAnalyzer(data)
+flds={'leftPressReward','rightPressReward','pctCorLeft','pctCorRight',...
+    'biasedLever','oneSampleH','oneSampleP','switching','nrSwitching','probSwitches'};
+nrFields=length(flds);
+nrData=length(data);
+anal=cell(nrFields,nrData);
+anal=cell2struct(anal,flds);
+for i=1:length(data)
+    % 1. Pct correct during right lever or left lever
+    anal(i).leftPressReward=data(i).reward(data(i).lever==1); % 1=left
+    anal(i).rightPressReward=data(i).reward(data(i).lever==2); % 2=right this is in the behavior program code
+    anal(i).pctCorRight=sum(anal(i).rightPressReward)/length(anal(i).rightPressReward);
+    anal(i).pctCorLeft=sum(anal(i).leftPressReward)/length(anal(i).leftPressReward);
+    if ttest2(anal(i).rightPressReward, anal(i).leftPressReward)
+        if anal(i).pctCorRight>anal(i).pctCorLeft
+            anal(i).biasedLever='Right Biased';
+        else
+            anal(i).biasedLever='Left Biased';
+        end
+    else
+        anal(i).biasedLever='None';
+    end
+    
+    % 2. one sample T-test, animals got right not by chance
+    compRandom=repmat([0;1],length(data(i).reward)/2,1);
+    [anal(i).oneSampleH,anal(i).oneSampleP] = ttest(data(i).reward,compRandom,'Tail','right');
+    % 3. number of switching rewarded levers.
+    switching=diff(data(i).lever);
+    anal(i).switching=switching; % -1:right->left // 1:left->right
+    switching(switching==0)=[];
+    anal(i).nrSwitching=length(switching);
+    % 4. lever pressing probability before and after switching
+    switchingTrials=find(anal(i).switching);
+    binSize=8;
+    switchingTrials(switchingTrials>data(i).totalTrial-binSize)=[]; % not enough amount of trials to test
+    switchingInd=repmat(switchingTrials,[1 2*binSize+1])+repmat(-binSize:1:binSize,[length(switchingTrials) 1]);
+    anal(i).probSwitches=(data(i).reward(switchingInd));
+    % 5. modeling the animals' choice to show the reward info updating from
+    % previous trials. i.e. previous trial rewarded, whether the animal
+    % changes the lever or stick to that lever to press.
+    
+end
+output=anal;
+end
+
+function [model,betaValuesInMat,rSquared,p,h]=logisticRegression(data)
+flds={'betaS','statS','pValues','rSquared'};
+nrFields=length(flds);
+nrData=length(data);
+model=cell(nrFields,nrData);
+model=cell2struct(model,flds);
+format compact
+warning('off','backtrace')
+stepback=5; % as the Parker et al., 2016 did
+testG=nan(length(data),2.*stepback+1);
+rSquared=zeros(length(data),1);
+betaValuesInMat=zeros(length(data),2.*stepback+1);
+for i=1:length(data)
+    withoutOmissionChoice=data(i).choice;
+    withoutOmissionChoice(withoutOmissionChoice==0)=[];
+    withoutOmissionRewards=data(i).reward;
+    withoutOmissionRewards(data(i).choice==0)=[];
+    rewardPredictor=zeros(length(withoutOmissionChoice),1);
+    nonRewardPredictor=zeros(length(withoutOmissionChoice),1);
+    rewardPredictor(withoutOmissionChoice==2&withoutOmissionRewards==1)=1;
+    rewardPredictor(withoutOmissionChoice==1&withoutOmissionRewards==1)=-1;
+    nonRewardPredictor(withoutOmissionChoice==2&withoutOmissionRewards==0)=1;
+    nonRewardPredictor(withoutOmissionChoice==1&withoutOmissionRewards==0)=-1;
+    
+    rightPressing=withoutOmissionChoice-1;
+    a=zeros(length(rewardPredictor)-stepback,stepback);
+    b=zeros(length(nonRewardPredictor)-stepback,stepback);
+    for j=1:stepback
+        a(:,j)=rewardPredictor(stepback-(stepback-j):end-(stepback-j+1));
+        b(:,j)=nonRewardPredictor(stepback-(stepback-j):end-(stepback-j+1));
+        modelMatrix=cat(2,[a b]);
+    end
+    categorizedRightPress=logical(rightPressing(1+stepback:end,1));
+    [betaValues,devg,stats] = glmfit(modelMatrix,categorizedRightPress,'binomial','link','logit');
+    model(i).betaS=betaValues';
+    model(i).statS=stats;
+    totalSumSquares = sum(categorizedRightPress-mean(categorizedRightPress).^2);
+    residual=model(i).statS.resid;
+    model(i).pValues=model(i).statS.p;
+    residualSumSquares=sum(residual.^2);
+    model(i).rSquared = 1-residualSumSquares./totalSumSquares;
+    rSquared(i,1)=model(i).rSquared;
+    betaValuesInMat(i,:)=model(i).betaS;
+    ordinal='th';
+    switch i
+        case 1
+            ordinal='st';
+        case 2
+            ordinal='nd';
+        case 3
+            ordinal='rd';
+    end
+    disp(['R sqaured of '  num2str(i) ordinal ' animal is '  num2str(model(i).rSquared) '.'])
+    
+end
+medianValue=median(rSquared);
+disp(['median R squared value of this session is ' num2str(medianValue) '.'])
+p=cat(2,model.pValues)';
+h=p<0.05;
 end
