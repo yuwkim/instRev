@@ -50,9 +50,9 @@ if ~isempty(hackerAnimal) % temporary will be revised later
             be='are animals';
     end
     warning(['Zerotrial response! There ' be ' hacked the program, box number: ' data(hackerAnimal).boxNum])
-    save(matFileName{1,1},'data','anal','tagData','hackerAnimal');
+    save(matFileName{1,1},'data','anal','model','tagData','hackerAnimal');
 else
-    save(matFileName{1,1},'data','anal','tagData')
+    save(matFileName{1,1},'data','anal','model','tagData')
 end
 
 disp(['The processed data saved as ' matFileName{1,1} '.mat.']);
