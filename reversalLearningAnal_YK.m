@@ -281,7 +281,6 @@ model=cell2struct(model,flds);
 format compact
 warning('off','backtrace')
 stepback=5; % as the Parker et al., 2016 did
-testG=nan(length(data),2.*stepback+1);
 rSquared=zeros(length(data),1);
 betaValuesInMat=zeros(length(data),2.*stepback+1);
 for i=1:length(data)
@@ -305,7 +304,7 @@ for i=1:length(data)
         modelMatrix=cat(2,[a b]);
     end
     categorizedRightPress=logical(rightPressing(1+stepback:end,1));
-    [betaValues,devg,stats] = glmfit(modelMatrix,categorizedRightPress,'binomial','link','logit');
+    [betaValues,~,stats] = glmfit(modelMatrix,categorizedRightPress,'binomial','link','logit');
     model(i).betaS=betaValues';
     model(i).statS=stats;
     totalSumSquares = sum(categorizedRightPress-mean(categorizedRightPress).^2);
