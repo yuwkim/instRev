@@ -1,13 +1,71 @@
-%% load data file
+
+
+%% Reversal Learning Analyzer Ver 0.7 by YK
 %
-% For a sanity check, this code will run only with a selection of a text
-% file.
+% This is a set of scripts to analyze the result file of reversal learning
+% paradigm (motivated by Parker et al., 2016).
+% The original looking of the result file is like this.
+%
+% Start Date: 11/22/18
+% End Date: 11/22/18
+% ... ... (syncopation)
+% Start Time: 11:06:06
+% End Time: 11:45:56
+% MSN: Inst Rev Full v8 RL even_Yk_150trials test
+% A:       0.000
+% B:   10000.000
+% C:   10000.000
+% D:     151.000
+% E:       2.000
+% ... ... (syncopation)
+% G:
+%      0:        0.000        1.000        1.000        2.000        1.000
+%      5:        2.000        2.000        1.000        2.000        1.000
+%     10:        2.000        2.000        1.000        2.000        1.000
+%     15:        2.000        2.000        2.000        1.000        2.000
+% ... ... (continues)
+%
+% This user-unfriendly, counterintuitive and redundant data will be
+% organized, sorted, and trimmed in this code.
+%
+% This Analyzer works in this scheme.
+% 1. Reading Data
+%    - reversalReader: a function reversalReader organizes and assigns data
+%                     types and a way of sorting them with 2 functions;
+%                     (1) lineTaker and (2) arrayTaker.
+%    - Sorted data will be saved as a struct 'data' with a date tagging, 
+%     'tagData'.
+% 2. Analyze Data
+%    - reversalAnalyzer: this will do basic analysis, such as whether
+%                       the animal was biased to pressing a certain side of
+%                       a lever or were animals' performance is above a
+%                       chance. The analyzed data will be saved as a struct
+%                       'anal'.
+%    - logisticRegressor: This is a modeling to figure out whether the
+%                        animal is updating the information from previous
+%                        tirals. In other words, by using a logistic 
+%                        regression scheme I try to predict whether the
+%                        consequence of previous trials influence the
+%                        current trial. Details will be in the help section
+%                        of this function. The data will be saved as a
+%                        struct 'model', regression coefficient in one
+%                        matrix 'betaValuesInMat', logic matrix of
+%                        rejecting null hypothesis 'h', p-values for this h
+%                        array as 'p', and the fitness of the modeling of
+%                        each animal as 'rSquared'.
+% 3. Drawing data (currently in working)
+% 
+
+%% load data file
 %
 clear
 % I thought for some users who are not familiar with coding the origin of
-% warning msg is not informative but a distraction.
+% a warning msg is not informative but a distraction.
 %
 warning('off','backtrace')
+% Since the name of the result file is long, I decided to make it with
+% (GUI) clicking the file.
+%
 [file,path,indx] = uigetfile('*.txt');
 % if the user did not choose a txt file to analyze, the script will be
 % stopped runing. If the chosen file is not a txt file, it will also stop,
@@ -16,6 +74,7 @@ warning('off','backtrace')
 if isequal(file,0)
     disp('Data Analysis Aborted.')
     return
+    % For a sanity check, this code will run only with a selection of a text file.
 elseif ~contains(file,'.txt')
     warning('This only can analyze text files.')
     return
@@ -41,13 +100,13 @@ end
 tagData=strsplit(file,'_');
 matFileName=strsplit(file,'.');
 tagData=tagData{1,1};
-
+fileLoc=char([path file]);
 %%
 % reading the data file by 'reversalReader' function.
 % it will make data struct which has organized basic raw data and a list of
 % animals using a bug of behavioral program.
 %
-[data,hackerAnimal]=reversalReader(file);
+[data,hackerAnimal]=reversalReader(fileLoc);
 %%
 % analyze the read data by 'reversalAnalyzer' function.
 % the output struct 'anal' will have basic analyzed information like biased
@@ -61,7 +120,7 @@ anal=reversalAnalyzer(data);
 % information from previous trials. Motivated from Parker et al., 2016.
 %
 %
-[model,betaValuesInMat,rSquared,p,h]=logisticRegression(data);
+[model,betaValuesInMat,rSquared,p,h]=logisticRegressor(data);
 
 %%
 % By the unidentified bug, animals could hack the behavior program. It was
@@ -82,7 +141,7 @@ end
 
 disp(['The processed data saved as ' matFileName{1,1} '.mat.']);
 % Data reading done.
-% 
+%
 fclose(fileID);
 
 %% Sanity checking
@@ -130,7 +189,7 @@ function output= lineTaker(lineName,fileName,header,num)
 %
 % Inputs
 % lineName: a line of information, a subject of the function.
-% fileName: a name of the file, which contains the line--the subject of the 
+% fileName: a name of the file, which contains the line--the subject of the
 %           function.
 % header  : a part of the line before ':', in this example, Start Date.
 % num     : a number of repeating, up to 12 animals' behavioral data can be
@@ -148,7 +207,7 @@ for i=1:num
 end
 fclose(fid);
 end
-
+%%
 % arrayTaker
 
 function [outputArray,hackerAnimal] = arrayTaker(arrayName,fileName,header,num)
@@ -161,19 +220,19 @@ function [outputArray,hackerAnimal] = arrayTaker(arrayName,fileName,header,num)
 %     15:        1.000        2.000        1.000        1.000        2.000
 %     ....(continues...)
 %
-% (name of array) 
+% (name of array)
 % G:
 % (row number indicator)
 % 0:
 % 5:
-% 10:
+% 10: ... ...
 % (real data)
 %  0.000        2.000        2.000        2.000        1.000 ... ...
 % this function will only take a part of real data.
-% 
+%
 % Inputs
-% arrayName: an array of information, a subject of the function 
-% fileName: a name of the file, which contains the array--the subject of 
+% arrayName: an array of information, a subject of the function
+% fileName: a name of the file, which contains the array--the subject of
 %           the function.
 % header  : a part of the line before ':', in this example, G:, a name of
 %           array.
@@ -192,7 +251,7 @@ for j=1:num
     totalTrial=str2double(lineTaker(arrayName,fileName,'D:',num))-1;
     % +1, because of 0 trial, software's feature=> every var starts with 0.
     tempArray=nan(round(totalTrial./nrCul)+1,nrCul);
-        for i=1:length(tempArray)-1
+    for i=1:length(tempArray)-1
         arrayName=fgetl(fid);
         arrayByLine=strsplit(arrayName,':');
         tempArray(i,:)=str2num(arrayByLine{1,2});
@@ -249,7 +308,7 @@ else
     disp(['it is not stopped, just wait a bit, about ' num2str(7*nrAnimals) ' seconds?']);
 end
 for j=1:nrAnimals
-    %% read session information
+    % read session information
     % check the linetaker function at the end of the script.
     %
     data(j).date=lineTaker(tline,fileName,'Start Date:',j);
@@ -261,7 +320,7 @@ for j=1:nrAnimals
     data(j).totalTimeInSec=str2double(lineTaker(tline,fileName,'X:',j));
     data(j).leftPress=str2double(lineTaker(tline,fileName,'Y:',j));
     data(j).rightPress=str2double(lineTaker(tline,fileName,'Z:',j));
-    %%
+    %
     % Let's organize a bit.
     %
     if data(j).totalTrial>150 % session ends at >j5j trials, so the j5j trial initiated but not completed.
@@ -269,7 +328,7 @@ for j=1:nrAnimals
     end
     data(j).totalTime=join([string(fix(data(j).totalTimeInSec/60)) 'min' ...
         rem(data(j).totalTimeInSec,60) 'sec']);
-    %% Read numeric data
+    % Read array data
     % (G: array) making animal choice data (0=omission,j=left,2=right)
     % (J: array) making rewarded levers
     % (L: array) making number of rewardss info
@@ -310,7 +369,7 @@ for j=1:nrAnimals
 end
 output=data;
 end
-
+%%
 % reversalAnalyzer
 
 function output = reversalAnalyzer(data)
@@ -358,7 +417,10 @@ end
 output=anal;
 end
 
-function [model,betaValuesInMat,rSquared,p,h]=logisticRegression(data)
+%%
+% logisticRegressor
+
+function [model,betaValuesInMat,rSquared,p,h]=logisticRegressor(data)
 flds={'betaS','statS','pValues','rSquared'};
 nrFields=length(flds);
 nrData=length(data);
