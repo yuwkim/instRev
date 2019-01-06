@@ -28,6 +28,10 @@
 % This user-unfriendly, counterintuitive and redundant data will be
 % organized, sorted, and trimmed in this code.
 %
+% (flowchart)
+% reversalReader(text file)= data-----> reversalAnalyzer(data)= anal---->plotting([anal,model])
+%   - lineTaker or arrayTaker           logisticRegressor(data)= model 
+%
 % This Analyzer works in this scheme.
 % 1. Reading Data
 %    - reversalReader: a function reversalReader organizes and assigns data
@@ -54,7 +58,7 @@
 %                        array as 'p', and the fitness of the modeling of
 %                        each animal as 'rSquared'.
 % 3. Drawing data (currently in working)
-% 
+%     
 
 %% load data file
 %
@@ -225,9 +229,12 @@ function [outputArray,hackerAnimal] = arrayTaker(arrayName,fileName,header,num)
 % (row number indicator)
 % 0:
 % 5:
-% 10: ... ...
+% 10:
+% ... ...
 % (real data)
-%  0.000        2.000        2.000        2.000        1.000 ... ...
+%  0.000        2.000        2.000        2.000        1.000 
+%  2.000        2.000        1.000        2.000        2.000
+%  ... ...
 % this function will only take a part of real data.
 %
 % Inputs
@@ -280,6 +287,16 @@ end
 % reversalReader
 
 function [output,hackerAnimal]= reversalReader(fileName)
+% This is a function assigning which type of data will be analyzed by which
+% function--lineTaker and arrayTaker. Simultaneuously, it also makes a
+% struct array to store the data after analyzation. This function has the
+% header information of txt files, such as variable D in the txt file is a
+% total number of trials, or variable L in the txtfile is an array
+% including reinforcer dispensing at each trials. 
+% 
+% Input
+% fileName: the name of the txt file to analyze with the file location--file path.
+%
 fid=fopen(fileName,'rt');
 tline=fgetl(fid);
 nrAnimals=0;
@@ -292,6 +309,7 @@ while nrAnimals<nrTotalBoxes
     nrAnimals=nrAnimals+1;
 end
 fclose(fid);
+% preallocation of the struct array in the for-loop
 flds={'date','boxNum','programName','totalTrial','totalReward','omission',...
     'totalTimeInSec','leftPress','rightPress','totalTime','choice','lever',...
     'reward','headEntryTime','pressLeverTime','pctCorrect','rtIn10ms','avgRtInSec'};
@@ -373,6 +391,16 @@ end
 % reversalAnalyzer
 
 function output = reversalAnalyzer(data)
+% A role of this is basic analysis of the data. This will show whether
+% the animal has a biased lever to press, behavioral performance above a
+% chance level, number of rewarded lever switching (numbers of blocks in
+% one session), and a probability before and after rewarded lever
+% switching.
+%
+% Input
+% data: a result struct of a function 'reversalReader'
+
+% preallocation of the struct array in the for-loop
 flds={'leftPressReward','rightPressReward','pctCorLeft','pctCorRight',...
     'biasedLever','oneSampleH','oneSampleP','switching','nrSwitching','probSwitches'};
 nrFields=length(flds);
@@ -409,10 +437,7 @@ for i=1:length(data)
     switchingTrials(switchingTrials>data(i).totalTrial-binSize)=[]; % not enough amount of trials to test
     switchingInd=repmat(switchingTrials,[1 2*binSize+1])+repmat(-binSize:1:binSize,[length(switchingTrials) 1]);
     anal(i).probSwitches=(data(i).reward(switchingInd));
-    % 5. modeling the animals' choice to show the reward info updating from
-    % previous trials. i.e. previous trial rewarded, whether the animal
-    % changes the lever or stick to that lever to press.
-    
+
 end
 output=anal;
 end
@@ -421,42 +446,87 @@ end
 % logisticRegressor
 
 function [model,betaValuesInMat,rSquared,p,h]=logisticRegressor(data)
+% this function does a logistic regression modeling to predict whether the
+% consequences in the previous trials affect the choice of the animal doing
+% the reversal learning. I am going to look back by 5 trials (Parker et
+% al., 2016). As Parker et al., 2016 did there will be 2 predictors; cases
+% of being rewarded and non-rewarded repectively. And, the probability of
+% choosing one side, here I will choose pressing right side lever, will be
+% calculated with these two predictors. These predicors are covering most
+% of the cases can happen during the behavior paradigm. 
+%
+% prob(pressing right side lever) = beta0+beta1*rewarded+beta2*nonReward
+% Reward predictor= +1 (pressing right side lever and rewarded)
+%                   -1 (pressing left side lever and rewarded)
+%                    0 (not rewarded)
+% nonReward predictor= +1 (pressing right side lever and not rewarded)
+%                      -1 (pressing left side lever and not rewarded)
+%                       0 (rewarded)
+% 
+% This being under the influence of the consequence of previous trials can
+% be interpreted as an updating the information. And, in my opinion,
+% updating information should be the result of active behavior. So, I
+% eliminated omitted trials which are the results of passive behavior in
+% this calculation. 
+%
+% Input
+% data: a struct array 'data' from the result of a function reversalReader.
+
+% preallocation of the struct array in the for-loop
 flds={'betaS','statS','pValues','rSquared'};
 nrFields=length(flds);
 nrData=length(data);
 model=cell(nrFields,nrData);
 model=cell2struct(model,flds);
-format compact
+% a warning sourse can be a distraction to read the actual message itself.
 warning('off','backtrace')
 stepback=5; % as the Parker et al., 2016 did
+% preallocation of other arrays 
 rSquared=zeros(length(data),1);
 betaValuesInMat=zeros(length(data),2.*stepback+1);
 for i=1:length(data)
+    % let's get rid of omission which is a result of passive behavior.
     withoutOmissionChoice=data(i).choice;
     withoutOmissionChoice(withoutOmissionChoice==0)=[];
     withoutOmissionRewards=data(i).reward;
     withoutOmissionRewards(data(i).choice==0)=[];
+    % let's make reward and non-reward predictor
     rewardPredictor=zeros(length(withoutOmissionChoice),1);
     nonRewardPredictor=zeros(length(withoutOmissionChoice),1);
+    % +1, -1 and 0 applying rule to generate a precursor of a model matrix 
     rewardPredictor(withoutOmissionChoice==2&withoutOmissionRewards==1)=1;
     rewardPredictor(withoutOmissionChoice==1&withoutOmissionRewards==1)=-1;
     nonRewardPredictor(withoutOmissionChoice==2&withoutOmissionRewards==0)=1;
     nonRewardPredictor(withoutOmissionChoice==1&withoutOmissionRewards==0)=-1;
-    
+    % let's add observed responses. since pressing Right=2, left=1, and
+    % omission=0 and there is no more omission now, plus, the observed 
+    % responses should all or none in glmfit, I can just simply subtract 1
+    % from the non-omission vector to get all or none vector.
     rightPressing=withoutOmissionChoice-1;
-    a=zeros(length(rewardPredictor)-stepback,stepback);
-    b=zeros(length(nonRewardPredictor)-stepback,stepback);
+    % I want to look back the previous trials so the model matrix should be
+    % multiplied by the number of trials that I want to look back. Let's do
+    % it with for-loop.
+    % so, preallocation.
+    rewardP=zeros(length(rewardPredictor)-stepback,stepback);
+    nonRewardP=zeros(length(nonRewardPredictor)-stepback,stepback);
     for j=1:stepback
-        a(:,j)=rewardPredictor(stepback-(stepback-j):end-(stepback-j+1));
-        b(:,j)=nonRewardPredictor(stepback-(stepback-j):end-(stepback-j+1));
-        modelMatrix=cat(2,[a b]);
+        rewardP(:,j)=rewardPredictor(stepback-(stepback-j):end-(stepback-j+1));
+        nonRewardP(:,j)=nonRewardPredictor(stepback-(stepback-j):end-(stepback-j+1));
+        modelMatrix=cat(2,[rewardP nonRewardP]);
     end
+    % glmfit needs a categorized vector.
     categorizedRightPress=logical(rightPressing(1+stepback:end,1));
     [betaValues,~,stats] = glmfit(modelMatrix,categorizedRightPress,'binomial','link','logit');
+    % save beta values(=best fit pharms or regression coefficient) separatly
+    % for plotting them easier in the next part.
     model(i).betaS=betaValues';
     model(i).statS=stats;
+    % show the fitting value for each animal.
     totalSumSquares = sum(categorizedRightPress-mean(categorizedRightPress).^2);
     residual=model(i).statS.resid;
+    % it will be also interesting to see which beta value is significantly
+    % affecting the current choice. so, save it separately to draw it
+    % later.
     model(i).pValues=model(i).statS.p;
     residualSumSquares=sum(residual.^2);
     model(i).rSquared = 1-residualSumSquares./totalSumSquares;
