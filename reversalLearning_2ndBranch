@@ -1,6 +1,6 @@
 
 
-%% Reversal Learning Analyzer Ver 0.7 by YK
+%% Reversal Learning Analyzer Ver 0.71 by YK
 %
 % This is a set of scripts to analyze the result file of reversal learning
 % paradigm (motivated by Parker et al., 2016).
@@ -144,7 +144,7 @@ else
     %save(matFileName{1,1},'data','anal','model','tagData','h','p','betaValuesInMat','rSquared');
 end
 
-disp(['The processed data saved as ' fullfile(path,matFileName{1,1}) '.mat.']);
+disp(['The processed data saved at ' fullfile(path,matFileName{1,1}) '.mat.']);
 % Data reading done.
 %
 fclose(fileID);
