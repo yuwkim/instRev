@@ -184,7 +184,7 @@ end
 % lineTaker
 %
 
-function output= lineTaker(lineName,fileName,header,num)
+function output= lineTaker(fileName,header,num)
 % This is a function to sort a type of data like this .
 %
 % Start Date: 12/06/18
@@ -201,20 +201,17 @@ function output= lineTaker(lineName,fileName,header,num)
 %           triple= 3rd animal's data. Saving multiple animals' data is out
 %           of my control, default setting of MED-PC software.
 frewind(fileName);
-for i=1:num
-    while ~contains(lineName,header)
-        lineName=fgetl(fileName);
-    end
-    dataOnly=strsplit(lineName,':');
-    output=dataOnly{1,2};
-    lineName=fgetl(fileName);
-end
-%fclose(fid);
+interval=intervalChecker(fileName,header,num);
+fseek(fileName,interval,'bof');
+tline=fgetl(fileName);
+dataOnly=strsplit(tline,':');
+tline=dataOnly{1,2};
+output=tline;
 end
 %%
 % arrayTaker
 
-function [outputArray,hackerAnimal] = arrayTaker(arrayName,fileName,header,num)
+function [outputArray,hackerAnimal] = arrayTaker(fileName,header,num)
 % This is a function to sort a type of data like this .
 %
 % G:
@@ -232,7 +229,7 @@ function [outputArray,hackerAnimal] = arrayTaker(arrayName,fileName,header,num)
 % 10:
 % ... ...
 % (real data)
-%  0.000        2.000        2.000        2.000        1.000 
+%  0.000        2.000        2.000        2.000        1.000
 %  2.000        2.000        1.000        2.000        2.000
 %  ... ...
 % this function will only take a part of real data.
@@ -250,40 +247,41 @@ function [outputArray,hackerAnimal] = arrayTaker(arrayName,fileName,header,num)
 frewind(fileName);
 maxNumAnimal=12; % physically, my lab has 12 boxes.
 hackerAnimal=nan(1,maxNumAnimal);
-for j=1:num
-    totalTrial=str2double(lineTaker(arrayName,fileName,'D:',num))-1;
-    while ~contains(arrayName,header)
-        arrayName=fgetl(fileName);
-    end
-    nrCul=5; % the Med PC software default value in a result file.
-    % +1, because of 0 trial, software's feature=> every var starts with 0.
-    tempArray=nan(round(totalTrial./nrCul)+1,nrCul);
-    for i=1:length(tempArray)-1
-        arrayName=fgetl(fileName);
-        arrayByLine=strsplit(arrayName,':');
-        tempArray(i,:)=str2num(arrayByLine{1,2});
-    end
-    % for 150 trial, the demension problem.
+totalTrial=150;
+%     while ~contains(arrayName,header)
+%         arrayName=fgetl(fileName);
+%     end
+interval=intervalChecker(fileName,header,num);
+fseek(fileName,interval,'bof');
+arrayName=fgetl(fileName); %#ok<NASGU> % take out the line having a name of a variable header(tag)
+nrCul=5; % the Med PC software default value in a result file.
+% +1, because of 0 trial, software's feature=> every var starts with 0.
+tempArray=nan(round(totalTrial./nrCul)+1,nrCul);
+for i=1:length(tempArray)-1
     arrayName=fgetl(fileName);
     arrayByLine=strsplit(arrayName,':');
-    tempArray(i+1,1)=str2num(arrayByLine{1,2}); %#ok<*ST2NM>
-    % another sainty check.
-    if contains(header,'G:') && ~tempArray(1,1)==0
-        hackerAnimal(1,j)=j;
-    end
-    % make the array as a column vector
-    tempArray(1,1)=nan;
-    [m,n]=size(tempArray);
-    revisedArray=reshape(tempArray',[m*n,1]);
-    revisedArray(isnan(revisedArray))=[];
-    outputArray=revisedArray;
-    hackerAnimal(isnan(hackerAnimal))=[];
-    hackerAnimal((hackerAnimal==0))=[];
-    arrayName=fgetl(fileName);
+    tempArray(i,:)=str2num(arrayByLine{1,2});
 end
-%fclose(fid);
+% for 150 trial, the demension problem.
+arrayName=fgetl(fileName);
+arrayByLine=strsplit(arrayName,':');
+tempArray(i+1,1)=str2num(arrayByLine{1,2}); %#ok<*ST2NM>
+% another sainty check.
+if contains(header,'G:') && ~tempArray(1,1)==0
+    hackerAnimal=num;
 end
-
+% make the array as a column vector
+tempArray(1,1)=nan;
+tempArray=tempArray';
+revisedArray=tempArray(:);
+%     [m,n]=size(tempArray);
+%     revisedArray=reshape(tempArray',[m*n,1]);
+revisedArray(isnan(revisedArray))=[];
+outputArray=revisedArray;
+hackerAnimal(isnan(hackerAnimal))=[];
+hackerAnimal((hackerAnimal==0))=[];
+end
+%%
 % reversalReader
 
 function [output,hackerAnimal]= reversalReader(fileName)
@@ -323,21 +321,21 @@ if ismac
 elseif isunix
     disp('I havent run it on Linux, but it will not be long.');
 else
-    disp(['it is not stopped, just wait a bit, about ' num2str(7*nrAnimals) ' seconds?']);
+    disp(['it is not stopped, just wait a bit, about ' num2str(1.7*nrAnimals) ' seconds?']);
 end
 for j=1:nrAnimals
     % read session information
     % check the linetaker function at the end of the script.
     %
-    data(j).date=lineTaker(tline,fileName,'Start Date:',j);
-    data(j).boxNum=lineTaker(tline,fileName,'Box:',j);
-    data(j).programName=lineTaker(tline,fileName,'MSN:',j);
-    data(j).totalTrial=str2double(lineTaker(tline,fileName,'D:',j));
-    data(j).totalReward=str2double(lineTaker(tline,fileName,'Q:',j));
-    data(j).omission=str2double(lineTaker(tline,fileName,'R:',j));
-    data(j).totalTimeInSec=str2double(lineTaker(tline,fileName,'X:',j));
-    data(j).leftPress=str2double(lineTaker(tline,fileName,'Y:',j));
-    data(j).rightPress=str2double(lineTaker(tline,fileName,'Z:',j));
+    data(j).date=lineTaker(fileName,'Start Date:',j);
+    data(j).boxNum=lineTaker(fileName,'Box:',j);
+    data(j).programName=lineTaker(fileName,'MSN:',j);
+    data(j).totalTrial=str2double(lineTaker(fileName,'D:',j));
+    data(j).totalReward=str2double(lineTaker(fileName,'Q:',j));
+    data(j).omission=str2double(lineTaker(fileName,'R:',j));
+    data(j).totalTimeInSec=str2double(lineTaker(fileName,'X:',j));
+    data(j).leftPress=str2double(lineTaker(fileName,'Y:',j));
+    data(j).rightPress=str2double(lineTaker(fileName,'Z:',j));
     %
     % Let's organize a bit.
     %
@@ -351,11 +349,11 @@ for j=1:nrAnimals
     % (J: array) making rewarded levers
     % (L: array) making number of rewardss info
     %
-    [data(j).choice,hackerAnimal]=arrayTaker(tline,fileName,'G:',j);
-    data(j).lever=arrayTaker(tline,fileName,'J:',j);
-    data(j).reward=arrayTaker(tline,fileName,'L:',j);
-    data(j).headEntryTime=arrayTaker(tline,fileName,'V:',j);
-    data(j).pressLeverTime=arrayTaker(tline,fileName,'W:',j);
+    [data(j).choice,hackerAnimal]=arrayTaker(fileName,'G:',j);
+    data(j).lever=arrayTaker(fileName,'J:',j);
+    data(j).reward=arrayTaker(fileName,'L:',j);
+    data(j).headEntryTime=arrayTaker(fileName,'V:',j);
+    data(j).pressLeverTime=arrayTaker(fileName,'W:',j);
     
     
     % another sanity check with the same issue when it calculated choice array
@@ -548,4 +546,25 @@ medianValue=median(rSquared);
 disp(['median R squared value of this session is ' num2str(medianValue) '.'])
 p=cat(2,model.pValues)';
 h=p<0.05;
+end
+%%
+% intervalChecker
+%
+
+function interval=intervalChecker(fid,header,num)
+% find the location of header (=tag name) information in a text file, and 
+% return the interval of repeating that particular header.
+% 
+% Input
+% fid=fopen(text resultfile)
+% header: tag name
+frewind(fid)
+tline1 = fgetl(fid);
+for i=1:num
+    while ~contains(tline1,header)
+        interval=ftell(fid);
+        tline1=fgetl(fid);
+    end
+    tline1=fgetl(fid);
+end
 end
