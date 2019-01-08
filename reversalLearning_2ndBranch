@@ -1,6 +1,6 @@
 
 
-%% Reversal Learning Analyzer Ver 0.71 by YK
+%% Reversal Learning Analyzer Ver 0.7 by YK
 %
 % This is a set of scripts to analyze the result file of reversal learning
 % paradigm (motivated by Parker et al., 2016).
@@ -138,12 +138,13 @@ if ~isempty(hackerAnimal)
             be='are animals';
     end
     warning(['Zerotrial response! There ' be ' hacked the program, box number: ' data(hackerAnimal).boxNum])
-    save(matFileName{1,1},'data','anal','model','tagData','h','p','betaValuesInMat','rSquared','hackerAnimal');
+    save(fullfile(path,matFileName{1,1}),'data','anal','model','tagData','h','p','betaValuesInMat','rSquared','hackerAnimal');
 else
-    save(matFileName{1,1},'data','anal','model','tagData','h','p','betaValuesInMat','rSquared');
+    save(fullfile(path,matFileName{1,1}),'data','anal','model','tagData','h','p','betaValuesInMat','rSquared');
+    %save(matFileName{1,1},'data','anal','model','tagData','h','p','betaValuesInMat','rSquared');
 end
 
-disp(['The processed data saved as ' matFileName{1,1} '.mat.']);
+disp(['The processed data saved as ' fullfile(path,matFileName{1,1}) '.mat.']);
 % Data reading done.
 %
 fclose(fileID);
