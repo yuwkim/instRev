@@ -444,10 +444,14 @@ for i=1:length(data)
     anal(i).nrSwitching=length(switching);
     % 4. lever pressing probability before and after switching
     switchingTrials=find(anal(i).switching);
+    switchingInterval=diff(switchingTrials);
+    switchingInterval=[switchingTrials(1,1);switchingInterval]; %#ok<AGROW>
     binSize=p.Results.binSize;
     switchingTrials(switchingTrials>data(i).totalTrial-binSize)=[]; % not enough amount of trials to test
     switchingInd=repmat(switchingTrials,[1 2*binSize+1])+repmat(-binSize:1:binSize,[length(switchingTrials) 1]);
-    if any(any(switchingInd<0))
+    % sanitycheck, hacker animals can switch the rewarded lever within the
+    % box of trials, these should be excluded.
+    if any(switchingInterval<10)
         warning(['The animal in the box' data(i).boxNum ' hacked the system too much to be analyzed. So, this result omitted.'])
         anal(i).rewardProbAroundSwitches=nan;
         anal(i).oneSampleH=nan;
@@ -461,7 +465,7 @@ end
 %%
 % logisticRegressor
 
-function [model,betaValuesInMat,rSquared,p,h]=logisticRegressor(data)
+function [model,betaValuesInMat,rSquared,p,h]=logisticRegressor(data,varargin)
 % this function does a logistic regression modeling to predict whether the
 % consequences in the previous trials affect the choice of the animal doing
 % the reversal learning. I am going to look back by 5 trials (Parker et
@@ -487,6 +491,9 @@ function [model,betaValuesInMat,rSquared,p,h]=logisticRegressor(data)
 %
 % Input
 % data: a struct array 'data' from the result of a function reversalReader.
+p=inputParser;
+p.addParameter('stepBack',5,@(x) x>0 && rem(x,1)==0);
+p.parse(varargin{:});
 
 % preallocation of the struct array in the for-loop
 flds={'betaS','statS','pValues','rSquared'};
@@ -496,7 +503,7 @@ model=cell(nrFields,nrData);
 model=cell2struct(model,flds);
 % a warning sourse can be a distraction to read the actual message itself.
 warning('off','backtrace')
-stepback=5; % as the Parker et al., 2016 did
+stepback=p.Results.stepBack; % as the Parker et al., 2016 did
 % preallocation of other arrays 
 rSquared=zeros(length(data),1);
 betaValuesInMat=zeros(length(data),2.*stepback+1);
