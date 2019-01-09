@@ -144,7 +144,7 @@ else
     %save(matFileName{1,1},'data','anal','model','tagData','h','p','betaValuesInMat','rSquared');
 end
 
-disp(['The processed data saved at ' fullfile(path,matFileName{1,1}) '.mat.']);
+disp(['The processed data saved as ' fullfile(path,matFileName{1,1}) '.mat.']);
 % Data reading done.
 %
 fclose(fileID);
@@ -212,7 +212,7 @@ end
 %%
 % arrayTaker
 
-function [outputArray,hackerAnimal] = arrayTaker(fileName,header,num)
+function [outputArray,hackerAnimal] = arrayTaker(fileName,header,num,varargin)
 % This is a function to sort a type of data like this .
 %
 % G:
@@ -245,17 +245,19 @@ function [outputArray,hackerAnimal] = arrayTaker(fileName,header,num)
 %           recorded per day. repeat twice= 2nd animal's data, repeat
 %           triple= 3rd animal's data. Saving multiple animals' data is out
 %           of my control, default setting of MED-PC software.
+p=inputParser;
+p.addParameter('totNumAnimal',12,@(x) x>0 && x<12);
+p.addParameter('nrCulumn',5,@(x) x>0 && rem(x,1)==0);
+p.parse(varargin{:});
+
 frewind(fileName);
-maxNumAnimal=12; % physically, my lab has 12 boxes.
+maxNumAnimal=p.Results.totNumAnimal;
 hackerAnimal=nan(1,maxNumAnimal);
-totalTrial=150;
-%     while ~contains(arrayName,header)
-%         arrayName=fgetl(fileName);
-%     end
+totalTrial=str2double(lineTaker(fileName,'D:',num))-1;
 interval=intervalChecker(fileName,header,num);
 fseek(fileName,interval,'bof');
 arrayName=fgetl(fileName); %#ok<NASGU> % take out the line having a name of a variable header(tag)
-nrCul=5; % the Med PC software default value in a result file.
+nrCul=p.Results.nrCulumn; % the Med PC software default value in a result file.
 % +1, because of 0 trial, software's feature=> every var starts with 0.
 tempArray=nan(round(totalTrial./nrCul)+1,nrCul);
 for i=1:length(tempArray)-1
@@ -275,8 +277,6 @@ end
 tempArray(1,1)=nan;
 tempArray=tempArray';
 revisedArray=tempArray(:);
-%     [m,n]=size(tempArray);
-%     revisedArray=reshape(tempArray',[m*n,1]);
 revisedArray(isnan(revisedArray))=[];
 outputArray=revisedArray;
 hackerAnimal(isnan(hackerAnimal))=[];
@@ -285,7 +285,7 @@ end
 %%
 % reversalReader
 
-function [output,hackerAnimal]= reversalReader(fileName)
+function [output,hackerAnimal]= reversalReader(fileName,varargin)
 % This is a function assigning which type of data will be analyzed by which
 % function--lineTaker and arrayTaker. Simultaneuously, it also makes a
 % struct array to store the data after analyzation. This function has the
@@ -297,9 +297,13 @@ function [output,hackerAnimal]= reversalReader(fileName)
 % fileName: the name of the txt file to analyze with the file location--file path.
 %
 % fid=fopen(fileName,'rt');
+p=inputParser;
+p.addParameter('workingBoxes',12,@(x) x>0 && rem(x,1)==0);
+p.parse(varargin{:});
+
 tline=fgetl(fileName);
-nrAnimals=0;
-nrTotalBoxes=12; % physically, the number of behavioral chambers in my lab is 12.
+nrAnimals=0; % this var will change based on the result of the calculation below. it is not solid 0.
+nrTotalBoxes=p.Results.workingBoxes;
 while nrAnimals<nrTotalBoxes
     while ~contains(tline,'Box:')
         tline=fgetl(fileName);
@@ -389,7 +393,7 @@ end
 %%
 % reversalAnalyzer
 
-function output = reversalAnalyzer(data)
+function output = reversalAnalyzer(data,varargin)
 % A role of this is basic analysis of the data. This will show whether
 % the animal has a biased lever to press, behavioral performance above a
 % chance level, number of rewarded lever switching (numbers of blocks in
@@ -398,10 +402,14 @@ function output = reversalAnalyzer(data)
 %
 % Input
 % data: a result struct of a function 'reversalReader'
+p=inputParser;
+p.addParameter('binSize',8,@(x) x>0 && rem(x,1)==0);
+p.parse(varargin{:});
 
 % preallocation of the struct array in the for-loop
 flds={'leftPressReward','rightPressReward','pctCorLeft','pctCorRight',...
-    'biasedLever','oneSampleH','oneSampleP','switching','nrSwitching','probSwitches'};
+    'biasedLever','oneSampleH','oneSampleP','switching','nrSwitching',...
+    'rewardProbAroundSwitches'};
 nrFields=length(flds);
 nrData=length(data);
 anal=cell(nrFields,nrData);
@@ -423,8 +431,12 @@ for i=1:length(data)
     end
     
     % 2. one sample T-test, animals got right not by chance
-    compRandom=repmat([0;1],length(data(i).reward)/2,1);
-    [anal(i).oneSampleH,anal(i).oneSampleP] = ttest(data(i).reward,compRandom,'Tail','right');
+    anal(i).oneSampleP=1-binocdf(sum(data(i).reward),data(i).totalTrial,0.5);
+    if anal(i).oneSampleP<0.05
+        anal(i).oneSampleH=1;
+    else
+        anal(i).oneSampleH=0;
+    end
     % 3. number of switching rewarded levers.
     switching=diff(data(i).lever);
     anal(i).switching=switching; % -1:right->left // 1:left->right
@@ -432,11 +444,16 @@ for i=1:length(data)
     anal(i).nrSwitching=length(switching);
     % 4. lever pressing probability before and after switching
     switchingTrials=find(anal(i).switching);
-    binSize=8;
+    binSize=p.Results.binSize;
     switchingTrials(switchingTrials>data(i).totalTrial-binSize)=[]; % not enough amount of trials to test
     switchingInd=repmat(switchingTrials,[1 2*binSize+1])+repmat(-binSize:1:binSize,[length(switchingTrials) 1]);
-    anal(i).probSwitches=(data(i).reward(switchingInd));
-
+    if any(any(switchingInd<0))
+        warning(['The animal in the box' data(i).boxNum ' hacked the system too much to be analyzed. So, this result omitted.'])
+        anal(i).rewardProbAroundSwitches=nan;
+        anal(i).oneSampleH=nan;
+    else
+        anal(i).rewardProbAroundSwitches=(data(i).reward(switchingInd));
+    end
 end
 output=anal;
 end
@@ -559,6 +576,7 @@ function interval=intervalChecker(fid,header,num)
 % Input
 % fid=fopen(text resultfile)
 % header: tag name
+% num: the number of box which is currently analyzed
 frewind(fid)
 tline1 = fgetl(fid);
 for i=1:num
