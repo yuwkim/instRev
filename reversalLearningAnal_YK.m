@@ -314,8 +314,8 @@ end
 %fclose(fid);
 % preallocation of the struct array in the for-loop
 flds={'date','boxNum','programName','totalTrial','totalReward','omission',...
-    'totalTimeInSec','leftPress','rightPress','totalTime','choice','lever',...
-    'reward','headEntryTime','pressLeverTime','pctCorrect','rtIn10ms','avgRtInSec'};
+    'totalTimeInSec','leftPress','rightPress','totalTime','pctCorrect',...
+    'choice','lever','reward','headEntryTime','pressLeverTime','rtIn10ms','avgRtInSec'};
 nrFields=length(flds);
 data=cell(nrFields,nrAnimals);
 data=cell2struct(data,flds);
