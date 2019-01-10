@@ -1,5 +1,3 @@
-
-
 %% Reversal Learning Analyzer Ver 0.71 by YK
 %
 % This is a set of scripts to analyze the result file of reversal learning
@@ -322,7 +320,7 @@ data=cell2struct(data,flds);
 % after preallocation, it was 5s faster in PC, wow.
 % In Mac, slightly faster.
 if ismac
-    disp(['it will not that be long, just wait a bit, about ' num2str(1.5.*nrAnimals) ' seconds?']);
+    disp(['it will not that be long, just wait a bit, about ' num2str(.17.*nrAnimals) ' seconds?']);
 elseif isunix
     disp('I havent run it on Linux, but it will not be long.');
 else
