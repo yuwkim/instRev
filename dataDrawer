@@ -27,3 +27,13 @@ emptyValueIndm=find(mutant(:,1)==0|isnan(mutant(:,1)));
 mutant(emptyValueIndm,:)=[];
 emptyValueInd=find(wildtype(:,1)==0|isnan(wildtype(:,1)));
 wildtype(emptyValueInd,:)=[];
+figure(1);clf;
+set(gcf,'position',[50 50 900 450])
+r=1;c=length(fieldsOfData);
+subplot(r,c,1);
+boxplot(wildtype(:,1))
+%box off
+xlabel ''
+ylabel ''
+title ''
+set(gca,'XTick',[1 2],'XTickLabel',{'WT','Mutant'});
