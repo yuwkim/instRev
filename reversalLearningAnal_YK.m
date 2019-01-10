@@ -1,4 +1,4 @@
-%% Reversal Learning Analyzer Ver 0.71 by YK
+%% Reversal Learning Analyzer Ver 0.8 by YK
 %
 % This is a set of scripts to analyze the result file of reversal learning
 % paradigm (motivated by Parker et al., 2016).
@@ -28,14 +28,14 @@
 %
 % (flowchart)
 % reversalReader(text file)= data-----> reversalAnalyzer(data)= anal---->plotting([anal,model])
-%   - lineTaker or arrayTaker           logisticRegressor(data)= model 
+%   - lineTaker or arrayTaker           logisticRegressor(data)= model
 %
 % This Analyzer works in this scheme.
 % 1. Reading Data
 %    - reversalReader: a function reversalReader organizes and assigns data
 %                     types and a way of sorting them with 2 functions;
 %                     (1) lineTaker and (2) arrayTaker.
-%    - Sorted data will be saved as a struct 'data' with a date tagging, 
+%    - Sorted data will be saved as a struct 'data' with a date tagging,
 %     'tagData'.
 % 2. Analyze Data
 %    - reversalAnalyzer: this will do basic analysis, such as whether
@@ -45,7 +45,7 @@
 %                       'anal'.
 %    - logisticRegressor: This is a modeling to figure out whether the
 %                        animal is updating the information from previous
-%                        tirals. In other words, by using a logistic 
+%                        tirals. In other words, by using a logistic
 %                        regression scheme I try to predict whether the
 %                        consequence of previous trials influence the
 %                        current trial. Details will be in the help section
@@ -56,7 +56,7 @@
 %                        array as 'p', and the fitness of the modeling of
 %                        each animal as 'rSquared'.
 % 3. Drawing data (currently in working)
-%     
+%
 
 %% load data file
 %
@@ -178,6 +178,10 @@ if any(~(versionChecker==150))
     disp('this result file was from an old version before dealing with hacking issue.')
 end
 
+%% plotting starts!
+%
+dataDrawer(data,tagData,hackerAnimal)
+
 %% functions
 %
 % lineTaker
@@ -244,13 +248,11 @@ function [outputArray,hackerAnimal] = arrayTaker(fileName,header,num,varargin)
 %           triple= 3rd animal's data. Saving multiple animals' data is out
 %           of my control, default setting of MED-PC software.
 p=inputParser;
-p.addParameter('totNumAnimal',12,@(x) x>0 && x<12);
 p.addParameter('nrCulumn',5,@(x) x>0 && rem(x,1)==0);
 p.parse(varargin{:});
 
 frewind(fileName);
-maxNumAnimal=p.Results.totNumAnimal;
-hackerAnimal=nan(1,maxNumAnimal);
+hackerAnimal=nan;
 totalTrial=str2double(lineTaker(fileName,'D:',num))-1;
 interval=intervalChecker(fileName,header,num);
 fseek(fileName,interval,'bof');
@@ -277,8 +279,6 @@ tempArray=tempArray';
 revisedArray=tempArray(:);
 revisedArray(isnan(revisedArray))=[];
 outputArray=revisedArray;
-hackerAnimal(isnan(hackerAnimal))=[];
-hackerAnimal((hackerAnimal==0))=[];
 end
 %%
 % reversalReader
@@ -289,14 +289,15 @@ function [output,hackerAnimal]= reversalReader(fileName,varargin)
 % struct array to store the data after analyzation. This function has the
 % header information of txt files, such as variable D in the txt file is a
 % total number of trials, or variable L in the txtfile is an array
-% including reinforcer dispensing at each trials. 
-% 
+% including reinforcer dispensing at each trials.
+%
 % Input
 % fileName: the name of the txt file to analyze with the file location--file path.
 %
 % fid=fopen(fileName,'rt');
 p=inputParser;
 p.addParameter('workingBoxes',12,@(x) x>0 && rem(x,1)==0);
+p.addParameter('totNumAnimal',12,@(x) x>0 && x<12);
 p.parse(varargin{:});
 
 tline=fgetl(fileName);
@@ -326,6 +327,8 @@ elseif isunix
 else
     disp(['it is not stopped, just wait a bit, about ' num2str(1.7*nrAnimals) ' seconds?']);
 end
+maxNumAnimal=p.Results.totNumAnimal;
+hackerAnimal=nan(maxNumAnimal,1);
 for j=1:nrAnimals
     % read session information
     % check the linetaker function at the end of the script.
@@ -352,7 +355,7 @@ for j=1:nrAnimals
     % (J: array) making rewarded levers
     % (L: array) making number of rewardss info
     %
-    [data(j).choice,hackerAnimal]=arrayTaker(fileName,'G:',j);
+    [data(j).choice,hackerAnimal(1,j)]=arrayTaker(fileName,'G:',j);
     data(j).lever=arrayTaker(fileName,'J:',j);
     data(j).reward=arrayTaker(fileName,'L:',j);
     data(j).headEntryTime=arrayTaker(fileName,'V:',j);
@@ -386,6 +389,7 @@ for j=1:nrAnimals
     end
     disp([num2str(j) ' out of ' num2str(nrAnimals) ' ' be ' done. ' patientMessage]);
 end
+hackerAnimal((hackerAnimal==0)|isnan(hackerAnimal))=[];
 output=data;
 end
 %%
@@ -471,7 +475,7 @@ function [model,betaValuesInMat,rSquared,p,h]=logisticRegressor(data,varargin)
 % of being rewarded and non-rewarded repectively. And, the probability of
 % choosing one side, here I will choose pressing right side lever, will be
 % calculated with these two predictors. These predicors are covering most
-% of the cases can happen during the behavior paradigm. 
+% of the cases can happen during the behavior paradigm.
 %
 % prob(pressing right side lever) = beta0+beta1*rewarded+beta2*nonReward
 % Reward predictor= +1 (pressing right side lever and rewarded)
@@ -480,12 +484,12 @@ function [model,betaValuesInMat,rSquared,p,h]=logisticRegressor(data,varargin)
 % nonReward predictor= +1 (pressing right side lever and not rewarded)
 %                      -1 (pressing left side lever and not rewarded)
 %                       0 (rewarded)
-% 
+%
 % This being under the influence of the consequence of previous trials can
 % be interpreted as an updating the information. And, in my opinion,
 % updating information should be the result of active behavior. So, I
 % eliminated omitted trials which are the results of passive behavior in
-% this calculation. 
+% this calculation.
 %
 % Input
 % data: a struct array 'data' from the result of a function reversalReader.
@@ -502,7 +506,7 @@ model=cell2struct(model,flds);
 % a warning sourse can be a distraction to read the actual message itself.
 warning('off','backtrace')
 stepback=p.Results.stepBack; % as the Parker et al., 2016 did
-% preallocation of other arrays 
+% preallocation of other arrays
 rSquared=zeros(length(data),1);
 betaValuesInMat=zeros(length(data),2.*stepback+1);
 for i=1:length(data)
@@ -514,13 +518,13 @@ for i=1:length(data)
     % let's make reward and non-reward predictor
     rewardPredictor=zeros(length(withoutOmissionChoice),1);
     nonRewardPredictor=zeros(length(withoutOmissionChoice),1);
-    % +1, -1 and 0 applying rule to generate a precursor of a model matrix 
+    % +1, -1 and 0 applying rule to generate a precursor of a model matrix
     rewardPredictor(withoutOmissionChoice==2&withoutOmissionRewards==1)=1;
     rewardPredictor(withoutOmissionChoice==1&withoutOmissionRewards==1)=-1;
     nonRewardPredictor(withoutOmissionChoice==2&withoutOmissionRewards==0)=1;
     nonRewardPredictor(withoutOmissionChoice==1&withoutOmissionRewards==0)=-1;
     % let's add observed responses. since pressing Right=2, left=1, and
-    % omission=0 and there is no more omission now, plus, the observed 
+    % omission=0 and there is no more omission now, plus, the observed
     % responses should all or none in glmfit, I can just simply subtract 1
     % from the non-omission vector to get all or none vector.
     rightPressing=withoutOmissionChoice-1;
@@ -575,9 +579,9 @@ end
 %
 
 function interval=intervalChecker(fid,header,num)
-% find the location of header (=tag name) information in a text file, and 
+% find the location of header (=tag name) information in a text file, and
 % return the interval of repeating that particular header.
-% 
+%
 % Input
 % fid=fopen(text resultfile)
 % header: tag name
@@ -592,3 +596,106 @@ for i=1:num
     tline1=fgetl(fid);
 end
 end
+%%
+% dataDrawer
+%
+function dataDrawer(data,tagData,hackerAnimals,varargin)
+p=inputParser;
+p.addParameter('yourStartingDay',datetime('2018-11-12'),@isdatetime);
+p.parse(varargin{:});
+data(hackerAnimals)=[]; % hacker animals are supposed to be out of this plotting.
+mutantAnimals={' 1' ' 2' ' 3' ' 4' ' 5' ' 12'};
+fieldsOfData={'totalReward','omission','totalTimeInSec','leftPress','rightPress','pctCorrect','avgRtInSec'};
+mutant=nan(length(data),length(fieldsOfData));
+wildtype=nan(1-length(data),length(fieldsOfData));
+for i=1:length(data)
+    if ismember(data(i).boxNum,mutantAnimals)
+        mutant(i,1)=data(i).totalReward;
+        mutant(i,2)=data(i).omission;
+        mutant(i,3)=data(i).totalTimeInSec./60;
+        mutant(i,4)=data(i).leftPress;
+        mutant(i,5)=data(i).rightPress;
+        mutant(i,6)=data(i).pctCorrect;
+        mutant(i,7)=data(i).avgRtInSec;
+    else
+        wildtype(i,1)=data(i).totalReward;
+        wildtype(i,2)=data(i).omission;
+        wildtype(i,3)=data(i).totalTimeInSec./60;
+        wildtype(i,4)=data(i).leftPress;
+        wildtype(i,5)=data(i).rightPress;
+        wildtype(i,6)=data(i).pctCorrect;
+        wildtype(i,7)=data(i).avgRtInSec;
+    end
+end
+emptyValueIndm=mutant(:,1)==0|isnan(mutant(:,1));
+mutant(emptyValueIndm,:)=[];
+emptyValueInd=wildtype(:,1)==0|isnan(wildtype(:,1));
+wildtype(emptyValueInd,:)=[];
+unified=[wildtype;mutant];
+categ=[repmat(char('  WT  '),length(wildtype(:,1)),1);...
+    repmat(char('Mutant'),length(mutant(:,1)),1)];
+figure(1);clf;
+set(gcf,'position',[50 50 1500 450])
+for i=1:length(fieldsOfData)
+    r=1;c=length(fieldsOfData);
+    subplot(r,c,i);
+    wildtypeOnes=ones(length(wildtype(:,i)),1);
+    mutantOnes=2.*ones(length(mutant(:,i)),1);
+    boxplot(unified(:,i),categ)
+    hold on
+    scatter(wildtypeOnes,wildtype(:,i),'jitter', 'on', 'jitterAmount', 0.06);
+    scatter(mutantOnes,mutant(:,i),'jitter', 'on', 'jitterAmount', 0.06);
+    minYValue=min([wildtype(:,i);mutant(:,i)]);
+    maxYValue=max([wildtype(:,i);mutant(:,i)]);
+    YTICKUNIT=[10;5;1;50;50;0.05;1];
+    closestMin=minYValue-rem(minYValue,YTICKUNIT(i,1));
+    closestMax=maxYValue-rem(maxYValue,YTICKUNIT(i,1))+YTICKUNIT(i,1);
+    switch i
+        case 1
+            ylabel 'Numbers of Rewards'
+            set(gca,'ytick',50:10:150,'ylim',[closestMin closestMax])
+        case 2
+            ylabel 'Numbers of Omissions'
+            set(gca,'ylim',[0 inf],'ylim',[closestMin closestMax])
+        case 3
+            ylabel 'Session Time (min)'
+            set(gca,'ytick',closestMin:closestMax,'ylim',[closestMin closestMax])
+        case 4
+            ylabel 'Numbers of Pressing Left'
+            set(gca,'ytick',50:10:150,'ylim',[closestMin closestMax])
+        case 5
+            ylabel 'Numbers of Pressing Right'
+            set(gca,'ytick',50:10:150,'ylim',[closestMin closestMax])
+        case 6
+            ylabel 'Percent Correnct (%)'
+            set(gca,'ylim',[closestMin closestMax])
+        case 7
+            ylabel 'Average Reaction Time (Sec)'
+            set(gca,'ylim',[closestMin closestMax])
+    end
+    set(gca,'XTick',[1 2],'XTickLabel',{'WT','Mutant'});
+    if closestMax>150
+        set(gca,'ytick',0:50:maxYValue-rem(maxYValue,10)+20)
+    end
+    if ttest2(wildtype(:,i),mutant(:,i))
+        title '*'
+        warning([fieldsOfData(1,i) ' is significant.'])
+    end
+    box off
+end
+currentSession=datetime(tagData);
+fullVerStarted=p.Results.yourStartingDay;
+trainedDays=currentSession-fullVerStarted;
+if datetime(currentSession)==datetime('2018-11-09')
+    nrTrainningDays=1; %the firstday.
+elseif datetime(currentSession)>datetime('2018-12-22')
+    nrTrainningDays=datenum(trainedDays)-2.*fix(datenum(trainedDays)/7)-6;
+else
+    nrTrainningDays=datenum(trainedDays)-2.*fix(datenum(trainedDays)/7)+2;
+end
+
+annotation('textbox',[0.30 0.935 0.43 0.08],'VerticalAlignment','middle',...
+    'String',['The Result of Day ' num2str(nrTrainningDays) ' full version recording ' tagData],...
+    'LineStyle','none','HorizontalAlignment','center','FontSize',12,'FitBoxToText','off');
+end
+
