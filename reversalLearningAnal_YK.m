@@ -138,13 +138,10 @@ if ~isempty(hackerAnimal)
     warning(['Type2 hacking! Zerotrial response! There ' be ' hacked the program, box number: ' num2str(boxNum(hackerAnimal)) '. These animals are excluded in the data analysis.'])
     hackerAnimals=[hackerAnimal hackerAnimal1];
     finishedOrderHackerAnimal=unique(hackerAnimals);
-    save(fullfile(path,matFileName{1,1}),'data','anal','model','tagData','h','p','betaValuesInMat','rSquared','finishedOrderHackerAnimal');
 else
     finishedOrderHackerAnimal=nan;
-    save(fullfile(path,matFileName{1,1}),'data','anal','model','tagData','h','p','betaValuesInMat','rSquared');
-    %save(matFileName{1,1},'data','anal','model','tagData','h','p','betaValuesInMat','rSquared');
 end
-
+save(fullfile(path,matFileName{1,1}),'data','anal','model','tagData','h','p','betaValuesInMat','rSquared','finishedOrderHackerAnimal');
 disp(['The processed data saved as ' fullfile(path,matFileName{1,1}) '.mat.']);
 % Data reading done.
 %
