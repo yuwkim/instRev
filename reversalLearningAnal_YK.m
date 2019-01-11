@@ -102,7 +102,6 @@ end
 tagData=strsplit(file,'_');
 matFileName=strsplit(file,'.');
 tagData=tagData{1,1};
-%fileLoc=char([path file]);
 %%
 % reading the data file by 'reversalReader' function.
 % it will make data struct which has organized basic raw data and a list of
@@ -255,12 +254,7 @@ p=inputParser;
 p.addParameter('nrCulumn',5,@(x) x>0 && rem(x,1)==0);
 p.parse(varargin{:});
 
-%frewind(fileName);
 hackerAnimal=nan;
-%totalTrial=str2double(lineTaker(fileName,'D:',num))-1;
-%interval=intervalChecker(fileName,header,num);
-%fseek(fileName,interval,'bof');
-%arrayName=fgetl(fileName); %#ok<NASGU> % take out the line having a name of a variable header(tag)
 nrCul=p.Results.nrCulumn; % the Med PC software default value in a result file.
 % +1, because of 0 trial, software's feature=> every var starts with 0.
 tempArray=nan(round(totalTrial./nrCul)+1,nrCul);
@@ -417,22 +411,6 @@ for j=1:nrAnimals
     end
     hackerAnimal1(hackerAnimal1==0|isnan(hackerAnimal1))=[];
 end
-% reset indeces
-
-
-% be='are';
-% patientMessage='Thank you for your patient.';
-% if j==1
-%     be='is';
-% elseif j>7 && j<nrAnimals-1
-%     patientMessage='I know it is long. Thank you.';
-% elseif j==nrAnimals-1
-%     patientMessage='Almost done!!';
-% end
-% disp([num2str(j) ' out of ' num2str(nrAnimals) ' ' be ' done. ' patientMessage]);
-
-% hackerAnimal((hackerAnimal==0)|isnan(hackerAnimal))=[];
-% hackerAnimal=(data(hackerAnimal).boxNum);
 output=data;
 end
 %%
@@ -617,28 +595,7 @@ disp(['median R squared value of this session is ' num2str(medianValue) '.'])
 p=cat(2,model.pValues)';
 h=p<0.05;
 end
-%%
-% intervalChecker
-%
 
-% function interval=intervalChecker(fid,header,num)
-% % find the location of header (=tag name) information in a text file, and
-% % return the interval of repeating that particular header.
-% %
-% % Input
-% % fid=fopen(text resultfile)
-% % header: tag name
-% % num: the number of box which is currently analyzed
-% frewind(fid)
-% tline1 = fgetl(fid);
-% for i=1:num
-%     while ~contains(tline1,header)
-%         interval=ftell(fid);
-%         tline1=fgetl(fid);
-%     end
-%     tline1=fgetl(fid);
-% end
-% end
 %%
 % dataDrawer
 %
