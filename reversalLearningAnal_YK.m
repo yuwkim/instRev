@@ -292,7 +292,7 @@ function [output,hackerAnimal,hackerAnimal1]= reversalReader(fileName,varargin)
 % Input
 % fileName: the name of the txt file to analyze with the file location--file path.
 %
-% fid=fopen(fileName,'rt');
+
 p=inputParser;
 p.addParameter('workingBoxes',12,@(x) x>0 && rem(x,1)==0);
 p.addParameter('totNumAnimal',12,@(x) x>0 && x<12);
@@ -308,7 +308,6 @@ while nrAnimals<nrTotalBoxes
     tline=fgetl(fileName);
     nrAnimals=nrAnimals+1;
 end
-%fclose(fid);
 % preallocation of the struct array in the for-loop
 flds={'date','boxNum','programName','totalTrial','totalReward','omission',...
     'totalTimeInSec','leftPress','rightPress','totalTime','pctCorrect',...
