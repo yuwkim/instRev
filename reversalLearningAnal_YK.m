@@ -140,6 +140,7 @@ if ~isempty(hackerAnimal)
     finishedOrderHackerAnimal=unique(hackerAnimals);
     save(fullfile(path,matFileName{1,1}),'data','anal','model','tagData','h','p','betaValuesInMat','rSquared','finishedOrderHackerAnimal');
 else
+    finishedOrderHackerAnimal=nan;
     save(fullfile(path,matFileName{1,1}),'data','anal','model','tagData','h','p','betaValuesInMat','rSquared');
     %save(matFileName{1,1},'data','anal','model','tagData','h','p','betaValuesInMat','rSquared');
 end
@@ -182,6 +183,7 @@ end
 
 %% plotting starts!
 %
+
 dataDrawer(data,tagData,finishedOrderHackerAnimal)
 
 %% functions
@@ -607,6 +609,7 @@ p.addParameter('ytickUnitMin',1,@(x) x>0 && rem(x,1)==0);
 p.addParameter('ytickUnitPress',20,@(x) x>0 && rem(x,1)==0);
 p.addParameter('ytickUnitProb',0.05,@(x) x>0);
 p.addParameter('ytickUnitSec',1,@(x) x>0 && rem(x,1)==0);
+p.addParameter('hacker',1,@(x) x>0 && rem(x,1)==0);
 p.parse(varargin{:});
 
 fieldsOfData={'totalReward','omission','totalTimeInSec','leftPress','rightPress','pctCorrect','avgRtInSec'};
@@ -614,9 +617,10 @@ dataTable = struct2table(data);
 totAnimals=table2array(dataTable(:,2));
 
 boxNum=cat(1,data.boxNum);
-
-mutantAnimals=[1;2;3;4;5;12];
-totAnimals(hackerAnimals)=[];
+if ~isnan(hackerAnimals)
+    totAnimals(hackerAnimals)=[];
+end
+ mutantAnimals=[1;2;3;4;5;12];
 mutantAnimals=intersect(mutantAnimals,totAnimals);
 
 wildtyeAnimals=totAnimals(~ismember(totAnimals,mutantAnimals));
@@ -691,7 +695,7 @@ end
 annotation('textbox',[0.30 0.935 0.43 0.08],'VerticalAlignment','middle',...
     'String',['The Result of Day ' num2str(nrTrainningDays) ' full version recording ' tagData],...
     'LineStyle','none','HorizontalAlignment','center','FontSize',12,'FitBoxToText','off');
-if ~isempty(hackerAnimals)
+if ~isnan(hackerAnimals)
     annotation('textbox',[0.43 0.014 0.18 0.062],'VerticalAlignment','middle',...
         'String',['Hacker Animal(s) in box: ' num2str(boxNum(hackerAnimals)') ' is/are excluded.'],...
         'HorizontalAlignment','center','FontSize',11,'FitBoxToText','off','EdgeColor','none');
