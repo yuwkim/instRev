@@ -654,17 +654,18 @@ for i=1:length(fieldsOfData)
             ylabel 'Session Time (min)'
             set(gca,'ytick',closestMin:closestMax,'ylim',[closestMin closestMax])
         case 4
-            ylabel 'Numbers of Pressing Left'
-            set(gca,'ytick',closestMin:p.Results.ytickUnitPress:closestMax,'ylim',[closestMin closestMax])
+            ylabel 'Numbers of Pressing Left'            
         case 5
-            ylabel 'Numbers of Pressing Right'
-            set(gca,'ytick',closestMin:p.Results.ytickUnitPress:closestMax,'ylim',[closestMin closestMax])
+            ylabel 'Numbers of Pressing Right'            
         case 6
-            ylabel 'Probability of Correnct Responses'
-            set(gca,'ylim',[closestMin closestMax])
+            ylabel 'Probability of Correnct Responses'            
         case 7
-            ylabel 'Average Reaction Time (Sec)'
-            set(gca,'ylim',[closestMin closestMax])
+            ylabel 'Average Reaction Time (Sec)'            
+    end
+    if ismember(i,[4,5])
+        set(gca,'ytick',closestMin:p.Results.ytickUnitPress:closestMax,'ylim',[closestMin closestMax])
+    elseif ismember(i,[6,7])
+        set(gca,'ylim',[closestMin closestMax])
     end
     set(gca,'XTick',[1 2],'XTickLabel',{'WT','Mutant'});
     if ttest2(wyData(:,i),muData(:,i))
@@ -701,6 +702,8 @@ function analDrawer(anal,nrTrainningDays,tagData,hackerAnimals,mutantValidAnimal
 p=inputParser;
 p.addParameter('probPlotSize',3,@(x) x>0 && rem(x,1)==0);
 p.addParameter('ytickUnitProb',0.05,@(x) x>0);
+p.addParameter('ytickUnitProbSwitch',0.2,@(x) x>0 && x<1);
+p.addParameter('ytickUnitPress',20,@(x) x>0 && rem(x,1)==0);
 p.parse(varargin{:});
 
 for i=1:length(anal)
@@ -751,6 +754,11 @@ for i=1:length(muAnal(1,:))
             case 5
                 ylabel 'Number of Switching in One Session'
         end
+        if ismember(i,[1 2])
+            set(gca,'ytick',closestMin:p.Results.ytickUnitProb:closestMax)
+        else
+            set(gca,'ytick',closestMin:p.Results.ytickUnitProbSwitch:closestMax)
+        end
         set(gca,'XTick',[1 2],'XTickLabel',{'WT','Mutant'});
         
     else
@@ -780,6 +788,10 @@ for i=1:length(muAnal(1,:))
     end
     box off
 end
+stepback=(length(wyProbRewAroundSwitches(1,:))-1)/2;
+xRange=-stepback:1:stepback;
+xAxisTicks=num2cell(xRange');
+
 subplot(r,c,i+1:length(muAnal(1,:))+p.Results.probPlotSize);
 meanWy=mean(wyProbRewAroundSwitches);
 meanMu=mean(muProbRewAroundSwitches);
@@ -792,7 +804,14 @@ end
 errorbar(1:length(meanWy),meanWy,wyProbStdError,'b')
 hold on
 errorbar(1:length(meanMu),meanMu,muProbStdError,'r')
-legend('WT','Mutant')
+hold on
+stem(stepback+1,1,'LineStyle','--','marker','none','Color','k')
+ylabel('Probability of Correct Responses at The Reversal')
+xlabel('The Rewarded Lever Switched at 0')
+set(gca,'ylim',[0 1],'ytick',0:p.Results.ytickUnitProbSwitch:1,...
+        'xtick',1:length(wyProbRewAroundSwitches(1,:)),'xticklabel',xAxisTicks)
+legend('WT','Mutant','Lever Switch','location','southwest')
+legend('boxoff')
 box off
 
 annotation('textbox',[0.30 0.935 0.43 0.08],'VerticalAlignment','middle',...
