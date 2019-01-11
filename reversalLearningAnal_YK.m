@@ -1,4 +1,4 @@
-%% Reversal Learning Analyzer Ver 0.8 by YK
+%% Reversal Learning Analyzer Ver 0.82 by YK
 %
 % This is a set of scripts to analyze the result file of reversal learning
 % paradigm (motivated by Parker et al., 2016).
@@ -108,7 +108,7 @@ tagData=tagData{1,1};
 % it will make data struct which has organized basic raw data and a list of
 % animals using a bug of behavioral program.
 %
-[data,hackerAnimal]=reversalReader(fileID);
+[data,hackerAnimal,hackerAnimal1]=reversalReader(fileID);
 %%
 % analyze the read data by 'reversalAnalyzer' function.
 % the output struct 'anal' will have basic analyzed information like biased
@@ -128,6 +128,7 @@ anal=reversalAnalyzer(data);
 % By the unidentified bug, animals could hack the behavior program. It was
 % a retracted lever pressing.
 %
+boxNum=cat(2,data.boxNum);
 if ~isempty(hackerAnimal)
     switch length(hackerAnimal)
         case 1
@@ -135,8 +136,10 @@ if ~isempty(hackerAnimal)
         otherwise
             be='are animals';
     end
-    warning(['Type2 hacking! Zerotrial response! There ' be ' hacked the program, box number: ' num2str(data(hackerAnimal).boxNum) '. These animals are excluded in the data analysis.'])
-    save(fullfile(path,matFileName{1,1}),'data','anal','model','tagData','h','p','betaValuesInMat','rSquared','hackerAnimal');
+    warning(['Type2 hacking! Zerotrial response! There ' be ' hacked the program, box number: ' num2str(boxNum(hackerAnimal)) '. These animals are excluded in the data analysis.'])
+    hackerAnimals=[hackerAnimal hackerAnimal1];
+    finishedOrderHackerAnimal=unique(hackerAnimals);
+    save(fullfile(path,matFileName{1,1}),'data','anal','model','tagData','h','p','betaValuesInMat','rSquared','finishedOrderHackerAnimal');
 else
     save(fullfile(path,matFileName{1,1}),'data','anal','model','tagData','h','p','betaValuesInMat','rSquared');
     %save(matFileName{1,1},'data','anal','model','tagData','h','p','betaValuesInMat','rSquared');
@@ -180,7 +183,7 @@ end
 
 %% plotting starts!
 %
-dataDrawer(data,tagData,hackerAnimal)
+dataDrawer(data,tagData,finishedOrderHackerAnimal)
 
 %% functions
 %
@@ -284,7 +287,7 @@ end
 %%
 % reversalReader
 
-function [output,hackerAnimal]= reversalReader(fileName,varargin)
+function [output,hackerAnimal,hackerAnimal1]= reversalReader(fileName,varargin)
 % This is a function assigning which type of data will be analyzed by which
 % function--lineTaker and arrayTaker. Simultaneuously, it also makes a
 % struct array to store the data after analyzation. This function has the
@@ -362,8 +365,6 @@ for j=1:nrAnimals
     if data(j).totalTrial>150 % session ends at >151 trials, so the 151 trial initiated but not completed.
         data(j).totalTrial=150;
     end
-    data(j).totalTime=join([string(fix(data(j).totalTimeInSec/60)) 'min' ...
-        rem(data(j).totalTimeInSec,60) 'sec']);
 end
 % Read array data
 % (G: array) making animal choice data (0=omission,j=left,2=right)
@@ -389,29 +390,35 @@ for j=1:nrAnimals
                 j=j+1; %#ok<FXSET>
         end
     end
+    hackerAnimal(hackerAnimal==0|isnan(hackerAnimal))=[];
 end
-
+for j=1:nrAnimals
+    data(j).totalTime=join([string(fix(data(j).totalTimeInSec/60)) 'min' ...
+        rem(data(j).totalTimeInSec,60) 'sec']);
+    data(j).pctCorrect=sum(data(j).reward)/(data(j).totalTrial-data(j).omission);
+    % nose poke to press lever, because of the medpc coding, a variable
+    % starts with 0, there is 0 trial for head entry (nose poke) and 151th head
+    % entry to finish the program. In a nutshell, we can get 149 of 150
+    % reaction time. Plus, jitter timing of lever extension applied. jitter
+    % range = 0.1s to 1s.
+    data(j).rtIn10ms=data(j).pressLeverTime(2:length(data(j).pressLeverTime))-data(j).headEntryTime(1:length(data(j).headEntryTime)-1);
+    data(j).avgRtInSec=mean(data(j).rtIn10ms(data(j).rtIn10ms>0 & data(j).rtIn10ms<3000))./100;
+    % omission trial has 0 ms reaction time, so if the animal omitted the
+    % trial, the rt will be huge, and it will be screened by indexing them with
+    % 0> and <3000.
+end
 
 % another sanity check with the same issue when it calculated choice array
 hackerAnimal1=nan(nrAnimals,1);
 for j=1:nrAnimals
     if ~(data(j).totalReward==sum(data(j).reward))
-        warning(['Type1 Hacking! More pressing than total trials! Animal in the box' num2str(data(j).boxNum) ' hacked the system, this animal excluded in data analysis'])
+        warning(['Type1 Hacking! More pressing than total trials! Animal in the box' num2str(data(j).boxNum) ' hacked the system, this animal excluded in data analysis.'])
         hackerAnimal1(j,1)=j;
     end
+    hackerAnimal1(hackerAnimal1==0|isnan(hackerAnimal1))=[];
 end
 % reset indeces
-data(j).pctCorrect=sum(data(j).reward)/(data(j).totalTrial-data(j).omission);
-% nose poke to press lever, because of the medpc coding, a variable
-% starts with 0, there is 0 trial for head entry (nose poke) and 151th head
-% entry to finish the program. In a nutshell, we can get 149 of 150
-% reaction time. Plus, jitter timing of lever extension applied. jitter
-% range = 0.1s to 1s.
-data(j).rtIn10ms=data(j).pressLeverTime(2:length(data(j).pressLeverTime))-data(j).headEntryTime(1:length(data(j).headEntryTime)-1);
-data(j).avgRtInSec=mean(data(j).rtIn10ms(data(j).rtIn10ms>0 & data(j).rtIn10ms<3000))./100;
-% omission trial has 0 ms reaction time, so if the animal omitted the
-% trial, the rt will be huge, and it will be screened by indexing them with
-% 0> and <3000.
+
 
 % be='are';
 % patientMessage='Thank you for your patient.';
@@ -424,8 +431,8 @@ data(j).avgRtInSec=mean(data(j).rtIn10ms(data(j).rtIn10ms>0 & data(j).rtIn10ms<3
 % end
 % disp([num2str(j) ' out of ' num2str(nrAnimals) ' ' be ' done. ' patientMessage]);
 
-hackerAnimal((hackerAnimal==0)|isnan(hackerAnimal))=[];
-hackerAnimal=(data(hackerAnimal).boxNum);
+% hackerAnimal((hackerAnimal==0)|isnan(hackerAnimal))=[];
+% hackerAnimal=(data(hackerAnimal).boxNum);
 output=data;
 end
 %%
@@ -614,24 +621,24 @@ end
 % intervalChecker
 %
 
-function interval=intervalChecker(fid,header,num)
-% find the location of header (=tag name) information in a text file, and
-% return the interval of repeating that particular header.
-%
-% Input
-% fid=fopen(text resultfile)
-% header: tag name
-% num: the number of box which is currently analyzed
-frewind(fid)
-tline1 = fgetl(fid);
-for i=1:num
-    while ~contains(tline1,header)
-        interval=ftell(fid);
-        tline1=fgetl(fid);
-    end
-    tline1=fgetl(fid);
-end
-end
+% function interval=intervalChecker(fid,header,num)
+% % find the location of header (=tag name) information in a text file, and
+% % return the interval of repeating that particular header.
+% %
+% % Input
+% % fid=fopen(text resultfile)
+% % header: tag name
+% % num: the number of box which is currently analyzed
+% frewind(fid)
+% tline1 = fgetl(fid);
+% for i=1:num
+%     while ~contains(tline1,header)
+%         interval=ftell(fid);
+%         tline1=fgetl(fid);
+%     end
+%     tline1=fgetl(fid);
+% end
+% end
 %%
 % dataDrawer
 %
@@ -649,10 +656,13 @@ p.parse(varargin{:});
 fieldsOfData={'totalReward','omission','totalTimeInSec','leftPress','rightPress','pctCorrect','avgRtInSec'};
 dataTable = struct2table(data);
 totAnimals=table2array(dataTable(:,2));
+
+boxNum=cat(1,data.boxNum);
+
 mutantAnimals=[1;2;3;4;5;12];
 totAnimals(hackerAnimals)=[];
-mutantAnimals(hackerAnimals)=[];
-boxNum=cat(2,data.boxNum);
+mutantAnimals=intersect(mutantAnimals,totAnimals);
+
 wildtyeAnimals=totAnimals(~ismember(totAnimals,mutantAnimals));
 muTable=dataTable(ismember(boxNum,mutantAnimals),[5:9 11 18]);
 wyTable=dataTable(ismember(boxNum,wildtyeAnimals),[5:9 11 18]);
@@ -727,8 +737,7 @@ annotation('textbox',[0.30 0.935 0.43 0.08],'VerticalAlignment','middle',...
     'LineStyle','none','HorizontalAlignment','center','FontSize',12,'FitBoxToText','off');
 if ~isempty(hackerAnimals)
     annotation('textbox',[0.43 0.014 0.18 0.062],'VerticalAlignment','middle',...
-        'String',['Hacker Animal(s) in box: ' num2str(hackerAnimals) ' is/are excluded.'],...
+        'String',['Hacker Animal(s) in box: ' num2str(boxNum(hackerAnimals)') ' is/are excluded.'],...
         'HorizontalAlignment','center','FontSize',11,'FitBoxToText','off','EdgeColor','none');
 end
 end
-
