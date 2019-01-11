@@ -107,13 +107,13 @@ tagData=tagData{1,1};
 % it will make data struct which has organized basic raw data and a list of
 % animals using a bug of behavioral program.
 %
-[data,hackerAnimal,hackerAnimal1]=reversalReader(fileID);
+[data,hackerAnimal2,hackerAnimal1]=reversalReader(fileID);
 %%
 % analyze the read data by 'reversalAnalyzer' function.
 % the output struct 'anal' will have basic analyzed information like biased
 % lever, onesample ttest, numbers of switching lever.
 %
-anal=reversalAnalyzer(data);
+[anal,hackerAnimal3]=reversalAnalyzer(data);
 %%
 % use logistic regression model for analyzing and modeling the behavior of
 % animals with 'logsticRegression' function.
@@ -127,16 +127,17 @@ anal=reversalAnalyzer(data);
 % By the unidentified bug, animals could hack the behavior program. It was
 % a retracted lever pressing.
 %
+hackerAnimals=[hackerAnimal2;hackerAnimal1;hackerAnimal3];
 boxNum=cat(2,data.boxNum);
-if ~isempty(hackerAnimal)
-    switch length(hackerAnimal)
+if ~isempty(hackerAnimals)
+    switch length(hackerAnimal2)
         case 1
             be='is animal';
         otherwise
             be='are animals';
     end
-    warning(['Type2 hacking! Zerotrial response! There ' be ' hacked the program, box number: ' num2str(boxNum(hackerAnimal)) '. These animals are excluded in the data analysis.'])
-    hackerAnimals=[hackerAnimal hackerAnimal1];
+    warning(['Type2 hacking! Zerotrial response! There ' be ' hacked the program, box number: ' num2str(boxNum(hackerAnimal2)) '. These animals are excluded in the data analysis.'])
+    %hackerAnimals=[hackerAnimal2;hackerAnimal1;hackerAnimal3];
     finishedOrderHackerAnimal=unique(hackerAnimals);
 else
     finishedOrderHackerAnimal=nan;
@@ -314,15 +315,9 @@ flds={'date','boxNum','programName','totalTrial','totalReward','omission',...
 nrFields=length(flds);
 data=cell(nrFields,nrAnimals);
 data=cell2struct(data,flds);
-if ismac
-    disp(['it will not that be long, just wait a bit, about ' num2str(.17.*nrAnimals) ' seconds?']);
-elseif isunix
-    disp('I havent run it on Linux, but it will not be long.');
-else
-    disp(['it is not stopped, just wait a bit, about ' num2str(1.7*nrAnimals) ' seconds?']);
-end
 hackerAnimal=nan(nrAnimals,1);
 frewind(fileName);
+hackerAnimal1=nan(nrAnimals,1);
 for j=1:nrAnimals
     while ~feof(fileName)
         tline=fgetl(fileName);
@@ -372,35 +367,25 @@ for j=1:nrAnimals
                 % omission trial has 0 ms reaction time, so if the animal omitted the
                 % trial, the rt will be huge, and it will be screened by indexing them with
                 % 0> and <3000.
+                if ~(data(j).totalReward==sum(data(j).reward))
+                    warning(['Type1 Hacking! More pressing than total trials! Animal in the box' num2str(data(j).boxNum) ' hacked the system, this animal excluded in data analysis.'])
+                    hackerAnimal1(j,1)=j;
+                end
+                hackerAnimal1(hackerAnimal1==0|isnan(hackerAnimal1))=[];
                 j=j+1; %#ok<FXSET>
         end
     end
 end
-%
-% Let's organize a bit.
-%
 hackerAnimal(hackerAnimal==0|isnan(hackerAnimal))=[];
-% Read array data
-% (G: array) making animal choice data (0=omission,j=left,2=right)
-% (J: array) making rewarded levers
-% (L: array) making number of rewardss info
-%
 
-% another sanity check with the same issue when it calculated choice array
-hackerAnimal1=nan(nrAnimals,1);
-for j=1:nrAnimals
-    if ~(data(j).totalReward==sum(data(j).reward))
-        warning(['Type1 Hacking! More pressing than total trials! Animal in the box' num2str(data(j).boxNum) ' hacked the system, this animal excluded in data analysis.'])
-        hackerAnimal1(j,1)=j;
-    end
-    hackerAnimal1(hackerAnimal1==0|isnan(hackerAnimal1))=[];
-end
+% (G: array) making animal choice data (0=omission,j=left,2=right)
+%
 output=data;
 end
 %%
 % reversalAnalyzer
 
-function output = reversalAnalyzer(data,varargin)
+function [output,hackerAnimal3] = reversalAnalyzer(data,varargin)
 % A role of this is basic analysis of the data. This will show whether
 % the animal has a biased lever to press, behavioral performance above a
 % chance level, number of rewarded lever switching (numbers of blocks in
@@ -421,6 +406,7 @@ nrFields=length(flds);
 nrData=length(data);
 anal=cell(nrFields,nrData);
 anal=cell2struct(anal,flds);
+hackerAnimal3=nan(length(data),1);
 for i=1:length(data)
     % 1. Pct correct during right lever or left lever
     anal(i).leftPressReward=data(i).reward(data(i).lever==1); % 1=left
@@ -459,12 +445,14 @@ for i=1:length(data)
     % sanitycheck, hacker animals can switch the rewarded lever within the
     % box of trials, these should be excluded.
     if any(switchingInterval<10)
-        warning(['The animal in the box' num2str(data(i).boxNum) ' hacked the system too much to be analyzed. So, this result omitted.'])
+        warning(['Type3 Hacking! The animal in the box' num2str(data(i).boxNum) ' hacked the system too much to be analyzed. So, this result is excluded.'])
         anal(i).rewardProbAroundSwitches=nan;
         anal(i).oneSampleH=nan;
+        hackerAnimal3(i,1)=i;
     else
         anal(i).rewardProbAroundSwitches=(data(i).reward(switchingInd));
     end
+    hackerAnimal3(hackerAnimal3==0|isnan(hackerAnimal3))=[];
 end
 output=anal;
 end
@@ -681,6 +669,6 @@ annotation('textbox',[0.30 0.935 0.43 0.08],'VerticalAlignment','middle',...
 if ~isnan(hackerAnimals)
     annotation('textbox',[0.43 0.014 0.18 0.062],'VerticalAlignment','middle',...
         'String',['Hacker Animal(s) in box: ' num2str(boxNum(hackerAnimals)') ' is/are excluded.'],...
-        'HorizontalAlignment','center','FontSize',11,'FitBoxToText','off','EdgeColor','none');
+        'HorizontalAlignment','center','FontSize',10,'FitBoxToText','off','EdgeColor','none');
 end
 end
