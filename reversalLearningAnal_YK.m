@@ -771,9 +771,11 @@ for i=1:length(muAnal(1,:))
                 ylabel 'Probability of Rewards Above a Chance Level'
                 set(gca,'ylim',[closestMin closestMax])
         end
-        if ttest2(wyAnal(:,i),muAnal(:,i))
-            title '*'
-            warning([char(fieldsOfData(1,i)) ' is significant.'])
+        if all(diff([wyAnal(:,i);muAnal(:,i)])~=0)
+            if ttest2(wyAnal(:,i),muAnal(:,i))
+                title '*'
+                warning([char(fieldsOfData(1,i)) ' is significant.'])
+            end
         end
     end
     box off
