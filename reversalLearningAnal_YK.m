@@ -359,6 +359,19 @@ for j=1:nrAnimals
                 data(j).headEntryTime=arrayTaker(fileName,'V:',data(j).totalTrial,j);
             case 'W'
                 data(j).pressLeverTime=arrayTaker(fileName,'W:',data(j).totalTrial,j);
+                data(j).totalTime=join([string(fix(data(j).totalTimeInSec/60)) 'min' ...
+                    rem(data(j).totalTimeInSec,60) 'sec']);
+                data(j).pctCorrect=sum(data(j).reward)/(data(j).totalTrial-data(j).omission);
+                % nose poke to press lever, because of the medpc coding, a variable
+                % starts with 0, there is 0 trial for head entry (nose poke) and 151th head
+                % entry to finish the program. In a nutshell, we can get 149 of 150
+                % reaction time. Plus, jitter timing of lever extension applied. jitter
+                % range = 0.1s to 1s.
+                data(j).rtIn10ms=data(j).pressLeverTime(2:length(data(j).pressLeverTime))-data(j).headEntryTime(1:length(data(j).headEntryTime)-1);
+                data(j).avgRtInSec=mean(data(j).rtIn10ms(data(j).rtIn10ms>0 & data(j).rtIn10ms<3000))./100;
+                % omission trial has 0 ms reaction time, so if the animal omitted the
+                % trial, the rt will be huge, and it will be screened by indexing them with
+                % 0> and <3000.
                 j=j+1; %#ok<FXSET>
         end
     end
@@ -372,21 +385,6 @@ hackerAnimal(hackerAnimal==0|isnan(hackerAnimal))=[];
 % (J: array) making rewarded levers
 % (L: array) making number of rewardss info
 %
-for j=1:nrAnimals
-    data(j).totalTime=join([string(fix(data(j).totalTimeInSec/60)) 'min' ...
-        rem(data(j).totalTimeInSec,60) 'sec']);
-    data(j).pctCorrect=sum(data(j).reward)/(data(j).totalTrial-data(j).omission);
-    % nose poke to press lever, because of the medpc coding, a variable
-    % starts with 0, there is 0 trial for head entry (nose poke) and 151th head
-    % entry to finish the program. In a nutshell, we can get 149 of 150
-    % reaction time. Plus, jitter timing of lever extension applied. jitter
-    % range = 0.1s to 1s.
-    data(j).rtIn10ms=data(j).pressLeverTime(2:length(data(j).pressLeverTime))-data(j).headEntryTime(1:length(data(j).headEntryTime)-1);
-    data(j).avgRtInSec=mean(data(j).rtIn10ms(data(j).rtIn10ms>0 & data(j).rtIn10ms<3000))./100;
-    % omission trial has 0 ms reaction time, so if the animal omitted the
-    % trial, the rt will be huge, and it will be screened by indexing them with
-    % 0> and <3000.
-end
 
 % another sanity check with the same issue when it calculated choice array
 hackerAnimal1=nan(nrAnimals,1);
