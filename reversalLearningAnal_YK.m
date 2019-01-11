@@ -176,7 +176,7 @@ for i=1:length(data)
     versionChecker(i,1)=data(i).leftPress+data(i).rightPress+data(i).omission;
 end
 if any(~(versionChecker==150))
-    disp('this result file was from an old version before dealing with hacking issue.')
+    disp('this result file was from an old version before solving the hacking issue.')
 end
 
 %% plotting starts!
@@ -399,7 +399,7 @@ p.addParameter('binSize',8,@(x) x>0 && rem(x,1)==0);
 p.parse(varargin{:});
 
 % preallocation of the struct array in the for-loop
-flds={'leftPressReward','rightPressReward','pctCorLeft','pctCorRight',...
+flds={'boxNum','leftPressReward','rightPressReward','pctCorLeft','pctCorRight',...
     'biasedLever','oneSampleH','oneSampleP','switching','nrSwitching',...
     'rewardProbAroundSwitches'};
 nrFields=length(flds);
@@ -408,6 +408,7 @@ anal=cell(nrFields,nrData);
 anal=cell2struct(anal,flds);
 hackerAnimal3=nan(length(data),1);
 for i=1:length(data)
+    anal(i).boxNum=data(i).boxNum;
     % 1. Pct correct during right lever or left lever
     anal(i).leftPressReward=data(i).reward(data(i).lever==1); % 1=left
     anal(i).rightPressReward=data(i).reward(data(i).lever==2); % 2=right this is in the behavior program code
@@ -491,7 +492,7 @@ p.addParameter('stepBack',5,@(x) x>0 && rem(x,1)==0);
 p.parse(varargin{:});
 
 % preallocation of the struct array in the for-loop
-flds={'betaS','statS','pValues','rSquared'};
+flds={'boxNum','betaS','statS','pValues','rSquared'};
 nrFields=length(flds);
 nrData=length(data);
 model=cell(nrFields,nrData);
@@ -503,6 +504,7 @@ stepback=p.Results.stepBack; % as the Parker et al., 2016 did
 rSquared=zeros(length(data),1);
 betaValuesInMat=zeros(length(data),2.*stepback+1);
 for i=1:length(data)
+    model(i).boxNum=data(i).boxNum;
     % let's get rid of omission which is a result of passive behavior.
     withoutOmissionChoice=data(i).choice;
     withoutOmissionChoice(withoutOmissionChoice==0)=[];
@@ -591,7 +593,7 @@ boxNum=cat(1,data.boxNum);
 if ~isnan(hackerAnimals)
     totAnimals(hackerAnimals)=[];
 end
- mutantAnimals=[1;2;3;4;5;12];
+mutantAnimals=[1;2;3;4;5;12];
 mutantAnimals=intersect(mutantAnimals,totAnimals);
 
 wildtyeAnimals=totAnimals(~ismember(totAnimals,mutantAnimals));
