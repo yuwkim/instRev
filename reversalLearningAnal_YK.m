@@ -336,6 +336,9 @@ for j=1:nrAnimals
                 data(j).programName=lineTaker(tline,'MSN:');
             case 'D'
                 data(j).totalTrial=str2double(lineTaker(tline,'D:'));
+                if data(j).totalTrial>150 % session ends at >151 trials, so the 151 trial initiated but not completed.
+                    data(j).totalTrial=150;
+                end
             case 'Q'
                 data(j).totalReward=str2double(lineTaker(tline,'Q:'));
             case 'R'
@@ -346,29 +349,6 @@ for j=1:nrAnimals
                 data(j).leftPress=str2double(lineTaker(tline,'Y:'));
             case 'Z'
                 data(j).rightPress=str2double(lineTaker(tline,'Z:'));
-                j=j+1; %#ok<FXSET>
-        end
-    end
-end
-%
-% Let's organize a bit.
-%
-for j=1:nrAnimals
-    if data(j).totalTrial>150 % session ends at >151 trials, so the 151 trial initiated but not completed.
-        data(j).totalTrial=150;
-    end
-end
-% Read array data
-% (G: array) making animal choice data (0=omission,j=left,2=right)
-% (J: array) making rewarded levers
-% (L: array) making number of rewardss info
-%
-frewind(fileName);
-for j=1:nrAnimals
-    while ~feof(fileName)
-        tline=fgetl(fileName);
-        headerOnly=strsplit(tline,':');
-        switch headerOnly{1,1}
             case 'G'
                 [data(j).choice,hackerAnimal(j,1)]=arrayTaker(fileName,'G:',data(j).totalTrial,j);
             case 'J'
@@ -382,8 +362,16 @@ for j=1:nrAnimals
                 j=j+1; %#ok<FXSET>
         end
     end
-    hackerAnimal(hackerAnimal==0|isnan(hackerAnimal))=[];
 end
+%
+% Let's organize a bit.
+%
+hackerAnimal(hackerAnimal==0|isnan(hackerAnimal))=[];
+% Read array data
+% (G: array) making animal choice data (0=omission,j=left,2=right)
+% (J: array) making rewarded levers
+% (L: array) making number of rewardss info
+%
 for j=1:nrAnimals
     data(j).totalTime=join([string(fix(data(j).totalTimeInSec/60)) 'min' ...
         rem(data(j).totalTimeInSec,60) 'sec']);
