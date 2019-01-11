@@ -135,7 +135,7 @@ if ~isempty(hackerAnimal)
         otherwise
             be='are animals';
     end
-    warning(['Zerotrial response! There ' be ' hacked the program, box number: ' data(hackerAnimal).boxNum])
+    warning(['Type2 hacking! Zerotrial response! There ' be ' hacked the program, box number: ' num2str(data(hackerAnimal).boxNum) '. These animals are excluded in the data analysis.'])
     save(fullfile(path,matFileName{1,1}),'data','anal','model','tagData','h','p','betaValuesInMat','rSquared','hackerAnimal');
 else
     save(fullfile(path,matFileName{1,1}),'data','anal','model','tagData','h','p','betaValuesInMat','rSquared');
@@ -187,7 +187,7 @@ dataDrawer(data,tagData,hackerAnimal)
 % lineTaker
 %
 
-function output= lineTaker(fileName,header,num)
+function output= lineTaker(fileName,header)
 % This is a function to sort a type of data like this .
 %
 % Start Date: 12/06/18
@@ -203,18 +203,19 @@ function output= lineTaker(fileName,header,num)
 %           recorded per day. repeat twice= 2nd animal's data, repeat
 %           triple= 3rd animal's data. Saving multiple animals' data is out
 %           of my control, default setting of MED-PC software.
-frewind(fileName);
-interval=intervalChecker(fileName,header,num);
-fseek(fileName,interval,'bof');
-tline=fgetl(fileName);
-dataOnly=strsplit(tline,':');
+
+dataOnly=strsplit(fileName,':');
 tline=dataOnly{1,2};
+switch header
+    case'Box:'
+        tline=str2num(dataOnly{1,2});
+end
 output=tline;
 end
 %%
 % arrayTaker
 
-function [outputArray,hackerAnimal] = arrayTaker(fileName,header,num,varargin)
+function [outputArray,hackerAnimal] = arrayTaker(fileName,header,totalTrial,num,varargin)
 % This is a function to sort a type of data like this .
 %
 % G:
@@ -251,12 +252,12 @@ p=inputParser;
 p.addParameter('nrCulumn',5,@(x) x>0 && rem(x,1)==0);
 p.parse(varargin{:});
 
-frewind(fileName);
+%frewind(fileName);
 hackerAnimal=nan;
-totalTrial=str2double(lineTaker(fileName,'D:',num))-1;
-interval=intervalChecker(fileName,header,num);
-fseek(fileName,interval,'bof');
-arrayName=fgetl(fileName); %#ok<NASGU> % take out the line having a name of a variable header(tag)
+%totalTrial=str2double(lineTaker(fileName,'D:',num))-1;
+%interval=intervalChecker(fileName,header,num);
+%fseek(fileName,interval,'bof');
+%arrayName=fgetl(fileName); %#ok<NASGU> % take out the line having a name of a variable header(tag)
 nrCul=p.Results.nrCulumn; % the Med PC software default value in a result file.
 % +1, because of 0 trial, software's feature=> every var starts with 0.
 tempArray=nan(round(totalTrial./nrCul)+1,nrCul);
@@ -270,7 +271,7 @@ arrayName=fgetl(fileName);
 arrayByLine=strsplit(arrayName,':');
 tempArray(i+1,1)=str2num(arrayByLine{1,2}); %#ok<*ST2NM>
 % another sainty check.
-if contains(header,'G:') && ~tempArray(1,1)==0
+if contains(header,'G:') && tempArray(1,1)~=0
     hackerAnimal=num;
 end
 % make the array as a column vector
@@ -318,8 +319,6 @@ flds={'date','boxNum','programName','totalTrial','totalReward','omission',...
 nrFields=length(flds);
 data=cell(nrFields,nrAnimals);
 data=cell2struct(data,flds);
-% after preallocation, it was 5s faster in PC, wow.
-% In Mac, slightly faster.
 if ismac
     disp(['it will not that be long, just wait a bit, about ' num2str(.17.*nrAnimals) ' seconds?']);
 elseif isunix
@@ -327,69 +326,106 @@ elseif isunix
 else
     disp(['it is not stopped, just wait a bit, about ' num2str(1.7*nrAnimals) ' seconds?']);
 end
-maxNumAnimal=p.Results.totNumAnimal;
-hackerAnimal=nan(maxNumAnimal,1);
+hackerAnimal=nan(nrAnimals,1);
+frewind(fileName);
 for j=1:nrAnimals
-    % read session information
-    % check the linetaker function at the end of the script.
-    %
-    data(j).date=lineTaker(fileName,'Start Date:',j);
-    data(j).boxNum=lineTaker(fileName,'Box:',j);
-    data(j).programName=lineTaker(fileName,'MSN:',j);
-    data(j).totalTrial=str2double(lineTaker(fileName,'D:',j));
-    data(j).totalReward=str2double(lineTaker(fileName,'Q:',j));
-    data(j).omission=str2double(lineTaker(fileName,'R:',j));
-    data(j).totalTimeInSec=str2double(lineTaker(fileName,'X:',j));
-    data(j).leftPress=str2double(lineTaker(fileName,'Y:',j));
-    data(j).rightPress=str2double(lineTaker(fileName,'Z:',j));
-    %
-    % Let's organize a bit.
-    %
-    if data(j).totalTrial>150 % session ends at >j5j trials, so the j5j trial initiated but not completed.
+    while ~feof(fileName)
+        tline=fgetl(fileName);
+        headerOnly=strsplit(tline,':');
+        switch headerOnly{1,1}
+            case 'Start Date'
+                data(j).date=lineTaker(tline,'Start Date:');
+            case 'Box'
+                data(j).boxNum=lineTaker(tline,'Box:');
+            case 'MSN'
+                data(j).programName=lineTaker(tline,'MSN:');
+            case 'D'
+                data(j).totalTrial=str2double(lineTaker(tline,'D:'));
+            case 'Q'
+                data(j).totalReward=str2double(lineTaker(tline,'Q:'));
+            case 'R'
+                data(j).omission=str2double(lineTaker(tline,'R:'));
+            case 'X'
+                data(j).totalTimeInSec=str2double(lineTaker(tline,'X:'));
+            case 'Y'
+                data(j).leftPress=str2double(lineTaker(tline,'Y:'));
+            case 'Z'
+                data(j).rightPress=str2double(lineTaker(tline,'Z:'));
+                j=j+1; %#ok<FXSET>
+        end
+    end
+end
+%
+% Let's organize a bit.
+%
+for j=1:nrAnimals
+    if data(j).totalTrial>150 % session ends at >151 trials, so the 151 trial initiated but not completed.
         data(j).totalTrial=150;
     end
     data(j).totalTime=join([string(fix(data(j).totalTimeInSec/60)) 'min' ...
         rem(data(j).totalTimeInSec,60) 'sec']);
-    % Read array data
-    % (G: array) making animal choice data (0=omission,j=left,2=right)
-    % (J: array) making rewarded levers
-    % (L: array) making number of rewardss info
-    %
-    [data(j).choice,hackerAnimal(1,j)]=arrayTaker(fileName,'G:',j);
-    data(j).lever=arrayTaker(fileName,'J:',j);
-    data(j).reward=arrayTaker(fileName,'L:',j);
-    data(j).headEntryTime=arrayTaker(fileName,'V:',j);
-    data(j).pressLeverTime=arrayTaker(fileName,'W:',j);
-    
-    
-    % another sanity check with the same issue when it calculated choice array
-    if ~(data(j).totalReward==sum(data(j).reward))
-        warning(['More pressing than total trials! Animal in the box' data(j).boxNum ' hacked the system, be careful with data interpretation'])
-    end
-    % reset indeces
-    data(j).pctCorrect=sum(data(j).reward)/(data(j).totalTrial-data(j).omission);
-    % nose poke to press lever, because of the medpc coding, a variable
-    % starts with 0, there is 0 trial for head entry (nose poke) and 151th head
-    % entry to finish the program. In a nutshell, we can get 149 of 150
-    % reaction time. Plus, jitter timing of lever extension applied. jitter
-    % range = 0.1s to 1s.
-    data(j).rtIn10ms=data(j).pressLeverTime(2:length(data(j).pressLeverTime))-data(j).headEntryTime(1:length(data(j).headEntryTime)-1);
-    data(j).avgRtInSec=mean(data(j).rtIn10ms(data(j).rtIn10ms>0 & data(j).rtIn10ms<3000))./100;
-    % omission trial has 0 ms reaction time, so if the animal omitted the
-    % trial, the rt will be huge, and it will be screened by indexing them with
-    % 0> and <3000.
-    be='are';
-    patientMessage='Thank you for your patient.';
-    if j==1
-        be='is';
-    elseif j>7 && j<nrAnimals-1
-        patientMessage='I know it is long. Thank you.';
-    elseif j==nrAnimals-1
-        patientMessage='Almost done!!';
-    end
-    disp([num2str(j) ' out of ' num2str(nrAnimals) ' ' be ' done. ' patientMessage]);
 end
+% Read array data
+% (G: array) making animal choice data (0=omission,j=left,2=right)
+% (J: array) making rewarded levers
+% (L: array) making number of rewardss info
+%
+frewind(fileName);
+for j=1:nrAnimals
+    while ~feof(fileName)
+        tline=fgetl(fileName);
+        headerOnly=strsplit(tline,':');
+        switch headerOnly{1,1}
+            case 'G'
+                [data(j).choice,hackerAnimal(j,1)]=arrayTaker(fileName,'G:',data(j).totalTrial,j);
+            case 'J'
+                data(j).lever=arrayTaker(fileName,'J:',data(j).totalTrial,j);
+            case 'L'
+                data(j).reward=arrayTaker(fileName,'L:',data(j).totalTrial,j);
+            case 'V'
+                data(j).headEntryTime=arrayTaker(fileName,'V:',data(j).totalTrial,j);
+            case 'W'
+                data(j).pressLeverTime=arrayTaker(fileName,'W:',data(j).totalTrial,j);
+                j=j+1; %#ok<FXSET>
+        end
+    end
+end
+
+
+% another sanity check with the same issue when it calculated choice array
+hackerAnimal1=nan(nrAnimals,1);
+for j=1:nrAnimals
+    if ~(data(j).totalReward==sum(data(j).reward))
+        warning(['Type1 Hacking! More pressing than total trials! Animal in the box' num2str(data(j).boxNum) ' hacked the system, this animal excluded in data analysis'])
+        hackerAnimal1(j,1)=j;
+    end
+end
+% reset indeces
+data(j).pctCorrect=sum(data(j).reward)/(data(j).totalTrial-data(j).omission);
+% nose poke to press lever, because of the medpc coding, a variable
+% starts with 0, there is 0 trial for head entry (nose poke) and 151th head
+% entry to finish the program. In a nutshell, we can get 149 of 150
+% reaction time. Plus, jitter timing of lever extension applied. jitter
+% range = 0.1s to 1s.
+data(j).rtIn10ms=data(j).pressLeverTime(2:length(data(j).pressLeverTime))-data(j).headEntryTime(1:length(data(j).headEntryTime)-1);
+data(j).avgRtInSec=mean(data(j).rtIn10ms(data(j).rtIn10ms>0 & data(j).rtIn10ms<3000))./100;
+% omission trial has 0 ms reaction time, so if the animal omitted the
+% trial, the rt will be huge, and it will be screened by indexing them with
+% 0> and <3000.
+
+% be='are';
+% patientMessage='Thank you for your patient.';
+% if j==1
+%     be='is';
+% elseif j>7 && j<nrAnimals-1
+%     patientMessage='I know it is long. Thank you.';
+% elseif j==nrAnimals-1
+%     patientMessage='Almost done!!';
+% end
+% disp([num2str(j) ' out of ' num2str(nrAnimals) ' ' be ' done. ' patientMessage]);
+
 hackerAnimal((hackerAnimal==0)|isnan(hackerAnimal))=[];
+hackerAnimal=(data(hackerAnimal).boxNum);
 output=data;
 end
 %%
@@ -454,7 +490,7 @@ for i=1:length(data)
     % sanitycheck, hacker animals can switch the rewarded lever within the
     % box of trials, these should be excluded.
     if any(switchingInterval<10)
-        warning(['The animal in the box' data(i).boxNum ' hacked the system too much to be analyzed. So, this result omitted.'])
+        warning(['The animal in the box' num2str(data(i).boxNum) ' hacked the system too much to be analyzed. So, this result omitted.'])
         anal(i).rewardProbAroundSwitches=nan;
         anal(i).oneSampleH=nan;
     else
@@ -602,84 +638,76 @@ end
 function dataDrawer(data,tagData,hackerAnimals,varargin)
 p=inputParser;
 p.addParameter('yourStartingDay',datetime('2018-11-12'),@isdatetime);
+p.addParameter('ytickUnitRew',10,@(x) x>0 && rem(x,1)==0);
+p.addParameter('ytickUnitOmt',5,@(x) x>0 && rem(x,1)==0);
+p.addParameter('ytickUnitMin',1,@(x) x>0 && rem(x,1)==0);
+p.addParameter('ytickUnitPress',20,@(x) x>0 && rem(x,1)==0);
+p.addParameter('ytickUnitProb',0.05,@(x) x>0);
+p.addParameter('ytickUnitSec',1,@(x) x>0 && rem(x,1)==0);
 p.parse(varargin{:});
-data(hackerAnimals)=[]; % hacker animals are supposed to be out of this plotting.
-mutantAnimals={' 1' ' 2' ' 3' ' 4' ' 5' ' 12'};
+
 fieldsOfData={'totalReward','omission','totalTimeInSec','leftPress','rightPress','pctCorrect','avgRtInSec'};
-mutant=nan(length(data),length(fieldsOfData));
-wildtype=nan(1-length(data),length(fieldsOfData));
-for i=1:length(data)
-    if ismember(data(i).boxNum,mutantAnimals)
-        mutant(i,1)=data(i).totalReward;
-        mutant(i,2)=data(i).omission;
-        mutant(i,3)=data(i).totalTimeInSec./60;
-        mutant(i,4)=data(i).leftPress;
-        mutant(i,5)=data(i).rightPress;
-        mutant(i,6)=data(i).pctCorrect;
-        mutant(i,7)=data(i).avgRtInSec;
-    else
-        wildtype(i,1)=data(i).totalReward;
-        wildtype(i,2)=data(i).omission;
-        wildtype(i,3)=data(i).totalTimeInSec./60;
-        wildtype(i,4)=data(i).leftPress;
-        wildtype(i,5)=data(i).rightPress;
-        wildtype(i,6)=data(i).pctCorrect;
-        wildtype(i,7)=data(i).avgRtInSec;
-    end
-end
-emptyValueIndm=mutant(:,1)==0|isnan(mutant(:,1));
-mutant(emptyValueIndm,:)=[];
-emptyValueInd=wildtype(:,1)==0|isnan(wildtype(:,1));
-wildtype(emptyValueInd,:)=[];
-unified=[wildtype;mutant];
-categ=[repmat(char('  WT  '),length(wildtype(:,1)),1);...
-    repmat(char('Mutant'),length(mutant(:,1)),1)];
+dataTable = struct2table(data);
+totAnimals=table2array(dataTable(:,2));
+mutantAnimals=[1;2;3;4;5;12];
+totAnimals(hackerAnimals)=[];
+mutantAnimals(hackerAnimals)=[];
+boxNum=cat(2,data.boxNum);
+wildtyeAnimals=totAnimals(~ismember(totAnimals,mutantAnimals));
+muTable=dataTable(ismember(boxNum,mutantAnimals),[5:9 11 18]);
+wyTable=dataTable(ismember(boxNum,wildtyeAnimals),[5:9 11 18]);
+muData=table2array(muTable);
+muData(:,3)=muData(:,3)./60;
+wyData=table2array(wyTable);
+wyData(:,3)=wyData(:,3)./60;
+unified=[wyData;muData];
+categ=[repmat(char('  WT  '),length(wyData(:,1)),1);...
+    repmat(char('Mutant'),length(muData(:,1)),1)];
 figure(1);clf;
 set(gcf,'position',[50 50 1500 450])
 for i=1:length(fieldsOfData)
     r=1;c=length(fieldsOfData);
     subplot(r,c,i);
-    wildtypeOnes=ones(length(wildtype(:,i)),1);
-    mutantOnes=2.*ones(length(mutant(:,i)),1);
+    wildtypeOnes=ones(length(wyData(:,i)),1);
+    mutantOnes=2.*ones(length(muData(:,i)),1);
     boxplot(unified(:,i),categ)
     hold on
-    scatter(wildtypeOnes,wildtype(:,i),'jitter', 'on', 'jitterAmount', 0.06);
-    scatter(mutantOnes,mutant(:,i),'jitter', 'on', 'jitterAmount', 0.06);
-    minYValue=min([wildtype(:,i);mutant(:,i)]);
-    maxYValue=max([wildtype(:,i);mutant(:,i)]);
-    YTICKUNIT=[10;5;1;50;50;0.05;1];
-    closestMin=minYValue-rem(minYValue,YTICKUNIT(i,1));
-    closestMax=maxYValue-rem(maxYValue,YTICKUNIT(i,1))+YTICKUNIT(i,1);
+    scatter(wildtypeOnes,wyData(:,i),'jitter', 'on', 'jitterAmount', 0.06);
+    scatter(mutantOnes,muData(:,i),'jitter', 'on', 'jitterAmount', 0.06);
+    minYValue=min([wyData(:,i);muData(:,i)]);
+    maxYValue=max([wyData(:,i);muData(:,i)]);
+    ytickUnit=[p.Results.ytickUnitRew;p.Results.ytickUnitOmt;p.Results.ytickUnitMin...
+        ;p.Results.ytickUnitPress;p.Results.ytickUnitPress;p.Results.ytickUnitProb...
+        ;p.Results.ytickUnitSec];
+    closestMin=minYValue-rem(minYValue,ytickUnit(i,1));
+    closestMax=maxYValue-rem(maxYValue,ytickUnit(i,1))+ytickUnit(i,1);
     switch i
         case 1
             ylabel 'Numbers of Rewards'
-            set(gca,'ytick',50:10:150,'ylim',[closestMin closestMax])
+            set(gca,'ytick',closestMin:p.Results.ytickUnitRew:closestMax,'ylim',[closestMin closestMax])
         case 2
             ylabel 'Numbers of Omissions'
-            set(gca,'ylim',[0 inf],'ylim',[closestMin closestMax])
+            set(gca,'ylim',[0 inf],'ytick',closestMin:p.Results.ytickUnitOmt:closestMax,'ylim',[closestMin closestMax])
         case 3
             ylabel 'Session Time (min)'
             set(gca,'ytick',closestMin:closestMax,'ylim',[closestMin closestMax])
         case 4
             ylabel 'Numbers of Pressing Left'
-            set(gca,'ytick',50:10:150,'ylim',[closestMin closestMax])
+            set(gca,'ytick',closestMin:p.Results.ytickUnitPress:closestMax,'ylim',[closestMin closestMax])
         case 5
             ylabel 'Numbers of Pressing Right'
-            set(gca,'ytick',50:10:150,'ylim',[closestMin closestMax])
+            set(gca,'ytick',closestMin:p.Results.ytickUnitPress:closestMax,'ylim',[closestMin closestMax])
         case 6
-            ylabel 'Percent Correnct (%)'
+            ylabel 'Probability of Correnct Responses'
             set(gca,'ylim',[closestMin closestMax])
         case 7
             ylabel 'Average Reaction Time (Sec)'
             set(gca,'ylim',[closestMin closestMax])
     end
     set(gca,'XTick',[1 2],'XTickLabel',{'WT','Mutant'});
-    if closestMax>150
-        set(gca,'ytick',0:50:maxYValue-rem(maxYValue,10)+20)
-    end
-    if ttest2(wildtype(:,i),mutant(:,i))
+    if ttest2(wyData(:,i),muData(:,i))
         title '*'
-        warning([fieldsOfData(1,i) ' is significant.'])
+        warning([char(fieldsOfData(1,i)) ' is significant.'])
     end
     box off
 end
@@ -687,7 +715,7 @@ currentSession=datetime(tagData);
 fullVerStarted=p.Results.yourStartingDay;
 trainedDays=currentSession-fullVerStarted;
 if datetime(currentSession)==datetime('2018-11-09')
-    nrTrainningDays=1; %the firstday.
+    nrTrainningDays=1; % the actual firstday. if you wanna computed a numbers of days, you can use inputparser.
 elseif datetime(currentSession)>datetime('2018-12-22')
     nrTrainningDays=datenum(trainedDays)-2.*fix(datenum(trainedDays)/7)-6;
 else
@@ -697,5 +725,10 @@ end
 annotation('textbox',[0.30 0.935 0.43 0.08],'VerticalAlignment','middle',...
     'String',['The Result of Day ' num2str(nrTrainningDays) ' full version recording ' tagData],...
     'LineStyle','none','HorizontalAlignment','center','FontSize',12,'FitBoxToText','off');
+if ~isempty(hackerAnimals)
+    annotation('textbox',[0.43 0.014 0.18 0.062],'VerticalAlignment','middle',...
+        'String',['Hacker Animal(s) in box: ' num2str(hackerAnimals) ' is/are excluded.'],...
+        'HorizontalAlignment','center','FontSize',11,'FitBoxToText','off','EdgeColor','none');
+end
 end
 
