@@ -148,6 +148,7 @@ disp(['The processed data saved as ' fullfile(path,matFileName{1,1}) '.mat.']);
 %
 fclose(fileID);
 
+
 %% Sanity checking
 % one sanity checking.
 % if the subject of analysis is not an original text file from my behavior
@@ -179,10 +180,34 @@ if any(~(versionChecker==150))
     disp('this result file was from an old version before solving the hacking issue.')
 end
 
+%%
+% Valid Animal checking
+
+dataTable=struct2table(data);
+totAnimals=table2array(dataTable(:,2));
+boxNum=cat(1,data.boxNum);
+if ~isnan(finishedOrderHackerAnimal)
+    totAnimals(finishedOrderHackerAnimal)=[];
+end
+% based on my lab notes
+%
+if strcmp(tagData,'2018-11-20')
+    mutantAnimals=[2;3;4;5;8;12];
+elseif ismember(tagData,['2018-11-23','2018-11-26','2018-11-27'])
+    mutantAnimals=[4;5;9;10;11;12];
+elseif ismember(tagData,['2018-12-03','2018-12-04','2018-12-05'])
+    mutantAnimals=[3;4;5;7;8;12];
+else
+    mutantAnimals=[1;2;3;4;5;12]; 
+end
+mutantValidAnimals=intersect(mutantAnimals,totAnimals);
+wildtyeValidAnimals=totAnimals(~ismember(totAnimals,mutantAnimals));
+
 %% plotting starts!
 %
 
-dataDrawer(data,tagData,finishedOrderHackerAnimal)
+nrTrainningDays=dataDrawer(data,tagData,finishedOrderHackerAnimal,mutantValidAnimals,wildtyeValidAnimals);
+analDrawer(anal,nrTrainningDays,tagData,finishedOrderHackerAnimal,mutantValidAnimals,wildtyeValidAnimals)
 
 %% functions
 %
@@ -573,7 +598,7 @@ end
 %%
 % dataDrawer
 %
-function dataDrawer(data,tagData,hackerAnimals,varargin)
+function nrTrainningDays=dataDrawer(data,tagData,hackerAnimals,mutantAnimals,wildtyeAnimals,varargin)
 p=inputParser;
 p.addParameter('yourStartingDay',datetime('2018-11-12'),@isdatetime);
 p.addParameter('ytickUnitRew',10,@(x) x>0 && rem(x,1)==0);
@@ -586,17 +611,10 @@ p.addParameter('hacker',1,@(x) x>0 && rem(x,1)==0);
 p.parse(varargin{:});
 
 fieldsOfData={'totalReward','omission','totalTimeInSec','leftPress','rightPress','pctCorrect','avgRtInSec'};
-dataTable = struct2table(data);
-totAnimals=table2array(dataTable(:,2));
 
+dataTable=struct2table(data);
 boxNum=cat(1,data.boxNum);
-if ~isnan(hackerAnimals)
-    totAnimals(hackerAnimals)=[];
-end
-mutantAnimals=[1;2;3;4;5;12];
-mutantAnimals=intersect(mutantAnimals,totAnimals);
 
-wildtyeAnimals=totAnimals(~ismember(totAnimals,mutantAnimals));
 muTable=dataTable(ismember(boxNum,mutantAnimals),[5:9 11 18]);
 wyTable=dataTable(ismember(boxNum,wildtyeAnimals),[5:9 11 18]);
 muData=table2array(muTable);
@@ -605,7 +623,8 @@ wyData=table2array(wyTable);
 wyData(:,3)=wyData(:,3)./60;
 unified=[wyData;muData];
 categ=[repmat(char('  WT  '),length(wyData(:,1)),1);...
-    repmat(char('Mutant'),length(muData(:,1)),1)];
+       repmat(char('Mutant'),length(muData(:,1)),1)];
+
 figure(1);clf;
 set(gcf,'position',[50 50 1500 450])
 for i=1:length(fieldsOfData)
@@ -667,6 +686,115 @@ end
 
 annotation('textbox',[0.30 0.935 0.43 0.08],'VerticalAlignment','middle',...
     'String',['The Result of Day ' num2str(nrTrainningDays) ' full version recording ' tagData],...
+    'LineStyle','none','HorizontalAlignment','center','FontSize',12,'FitBoxToText','off');
+if ~isnan(hackerAnimals)
+    annotation('textbox',[0.30 0.016 0.4 0.062],'VerticalAlignment','middle',...
+        'String',['Hacker Animal(s) in box: ' num2str(boxNum(hackerAnimals)') ' is/are excluded.'],...
+        'HorizontalAlignment','center','FontSize',10,'FitBoxToText','off','EdgeColor','none');
+end
+end
+%%
+% analDrawer
+%
+
+function analDrawer(anal,nrTrainningDays,tagData,hackerAnimals,mutantValidAnimals,wildtyeValidAnimals,varargin)
+p=inputParser;
+p.addParameter('probPlotSize',3,@(x) x>0 && rem(x,1)==0);
+p.addParameter('ytickUnitProb',0.05,@(x) x>0);
+p.parse(varargin{:});
+
+for i=1:length(anal)
+    switch anal(i).biasedLever
+        case 'None'
+            anal(i).biasedLever=0;
+        case 'Left Biased'
+            anal(i).biasedLever=-1; %#ok<*SAGROW>
+        case 'Right Biased'
+            anal(i).biasedLever=1;
+    end
+end
+analTable=struct2table(anal);
+boxNum=cat(1,anal.boxNum);
+muAnalTable=analTable(ismember(boxNum,mutantValidAnimals),[4:7 10:11]);
+wyAnalTable=analTable(ismember(boxNum,wildtyeValidAnimals),[4:7 10:11]);
+muAnal=table2array(muAnalTable(:,1:5));
+wyAnal=table2array(wyAnalTable(:,1:5));
+muProbRewAroundSwitches=cell2mat(table2array(muAnalTable(:,6)));
+wyProbRewAroundSwitches=cell2mat(table2array(wyAnalTable(:,6)));
+categ=[repmat(char('  WT  '),length(wyAnal(:,1)),1);...
+    repmat(char('Mutant'),length(muAnal(:,1)),1)];
+wildtypeOnes=ones(length(wyAnal(:,1)),1);
+mutantOnes=2.*ones(length(muAnal(:,1)),1);
+ytickUnit=p.Results.ytickUnitProb;
+
+figure(2);clf;
+set(gcf,'position',[50 50 1500 450])
+for i=1:length(muAnal(1,:))
+    r=1;c=length(muAnal(1,:))+p.Results.probPlotSize;
+    subplot(r,c,i);
+    if ismember(i,[1 2 5])
+        unifiedAnal=[wyAnal(:,i);muAnal(:,i)];
+        boxplot(unifiedAnal,categ)
+        hold on
+        scatter(wildtypeOnes,wyAnal(:,i),'jitter', 'on', 'jitterAmount', 0.06);
+        scatter(mutantOnes,muAnal(:,i),'jitter', 'on', 'jitterAmount', 0.06);
+        minYValue=min([wyAnal(:,i);muAnal(:,i)]);
+        maxYValue=max([wyAnal(:,i);muAnal(:,i)]);
+        closestMin=minYValue-rem(minYValue,ytickUnit);
+        closestMax=maxYValue-rem(maxYValue,ytickUnit)+ytickUnit;
+        set(gca,'ylim',[closestMin closestMax])
+        switch i
+            case 1
+                ylabel 'Left-biased Probability of Correnct Responses'
+            case 2
+                ylabel 'Right-biased Probability of Correnct Responses'
+            case 5
+                ylabel 'Number of Switching in One Session'
+        end
+        set(gca,'XTick',[1 2],'XTickLabel',{'WT','Mutant'});
+        
+    else
+        unified=([mean(wyAnal(:,i)) mean(muAnal(:,i))]);
+        wyStdError=std(wyAnal(:,i)/sqrt(sum(wyAnal(:,i))));
+        muStdError=std(muAnal(:,i)/sqrt(sum(muAnal(:,i))));
+        bar([1 2],unified)
+        hold on
+        errorbar(1,mean(wyAnal(:,i)),wyStdError,'k')
+        hold on
+        errorbar(2,mean(muAnal(:,i)),muStdError,'k')
+        set(gca,'XTick',[1 2],'XTickLabel',{'WT','Mutant'});
+        switch i
+            case 3
+                ylabel 'Biased to One Side of a Lever Level'
+                set(gca,'ylim',[-1 1],'ytick',[-1 0 1],'YTickLabel',{'Right','None','Left'})
+            case 4
+                ylabel 'Probability of Rewards Above a Chance Level'
+                set(gca,'ylim',[closestMin closestMax])
+        end
+        if ttest2(wyAnal(:,i),muAnal(:,i))
+            title '*'
+            warning([char(fieldsOfData(1,i)) ' is significant.'])
+        end
+    end
+    box off
+end
+subplot(r,c,i+1:length(muAnal(1,:))+p.Results.probPlotSize);
+meanWy=mean(wyProbRewAroundSwitches);
+meanMu=mean(muProbRewAroundSwitches);
+wyProbStdError=nan(1,length(wyProbRewAroundSwitches(1,:)));
+muProbStdError=nan(1,length(muProbRewAroundSwitches(1,:)));
+for i=1:length(wyProbRewAroundSwitches(1,:))
+    wyProbStdError(1,i)=std(wyProbRewAroundSwitches(:,i)/sqrt(sum(wyProbRewAroundSwitches(:,i))));
+    muProbStdError(1,i)=std(muProbRewAroundSwitches(:,i)/sqrt(sum(muProbRewAroundSwitches(:,i))));
+end
+errorbar(1:length(meanWy),meanWy,wyProbStdError,'b')
+hold on
+errorbar(1:length(meanMu),meanMu,muProbStdError,'r')
+legend('WT','Mutant')
+box off
+
+annotation('textbox',[0.30 0.935 0.43 0.08],'VerticalAlignment','middle',...
+    'String',['The Analysis Result of Day ' num2str(nrTrainningDays) ' full version recording ' tagData],...
     'LineStyle','none','HorizontalAlignment','center','FontSize',12,'FitBoxToText','off');
 if ~isnan(hackerAnimals)
     annotation('textbox',[0.30 0.016 0.4 0.062],'VerticalAlignment','middle',...
