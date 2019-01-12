@@ -198,7 +198,7 @@ elseif ismember(tagData,['2018-11-23','2018-11-26','2018-11-27'])
 elseif ismember(tagData,['2018-12-03','2018-12-04','2018-12-05'])
     mutantAnimals=[3;4;5;7;8;12];
 else
-    mutantAnimals=[1;2;3;4;5;12]; 
+    mutantAnimals=[1;2;3;4;5;12];
 end
 mutantValidAnimals=intersect(mutantAnimals,totAnimals);
 wildtyeValidAnimals=totAnimals(~ismember(totAnimals,mutantAnimals));
@@ -208,6 +208,7 @@ wildtyeValidAnimals=totAnimals(~ismember(totAnimals,mutantAnimals));
 
 nrTrainningDays=dataDrawer(data,tagData,finishedOrderHackerAnimal,mutantValidAnimals,wildtyeValidAnimals);
 analDrawer(anal,nrTrainningDays,tagData,finishedOrderHackerAnimal,mutantValidAnimals,wildtyeValidAnimals)
+modeldrawer(betaValuesInMat)
 
 %% functions
 %
@@ -623,7 +624,7 @@ wyData=table2array(wyTable);
 wyData(:,3)=wyData(:,3)./60;
 unified=[wyData;muData];
 categ=[repmat(char('  WT  '),length(wyData(:,1)),1);...
-       repmat(char('Mutant'),length(muData(:,1)),1)];
+    repmat(char('Mutant'),length(muData(:,1)),1)];
 
 figure(1);clf;
 set(gcf,'position',[50 50 1500 450])
@@ -654,13 +655,13 @@ for i=1:length(fieldsOfData)
             ylabel 'Session Time (min)'
             set(gca,'ytick',closestMin:closestMax,'ylim',[closestMin closestMax])
         case 4
-            ylabel 'Numbers of Pressing Left'            
+            ylabel 'Numbers of Pressing Left'
         case 5
-            ylabel 'Numbers of Pressing Right'            
+            ylabel 'Numbers of Pressing Right'
         case 6
-            ylabel 'Probability of Correnct Responses'            
+            ylabel 'Probability of Correnct Responses'
         case 7
-            ylabel 'Average Reaction Time (Sec)'            
+            ylabel 'Average Reaction Time (Sec)'
     end
     if ismember(i,[4,5])
         set(gca,'ytick',closestMin:p.Results.ytickUnitPress:closestMax,'ylim',[closestMin closestMax])
@@ -702,7 +703,7 @@ function analDrawer(anal,nrTrainningDays,tagData,hackerAnimals,mutantValidAnimal
 p=inputParser;
 p.addParameter('probPlotSize',3,@(x) x>0 && rem(x,1)==0);
 p.addParameter('ytickUnitProb',0.05,@(x) x>0);
-p.addParameter('ytickUnitProbSwitch',0.2,@(x) x>0 && x<1);
+p.addParameter('ytickUnitProbSwitch',1,@(x) x>0);
 p.addParameter('ytickUnitPress',20,@(x) x>0 && rem(x,1)==0);
 p.parse(varargin{:});
 
@@ -724,8 +725,6 @@ muAnal=table2array(muAnalTable(:,1:5));
 wyAnal=table2array(wyAnalTable(:,1:5));
 muProbRewAroundSwitches=cell2mat(table2array(muAnalTable(:,6)));
 wyProbRewAroundSwitches=cell2mat(table2array(wyAnalTable(:,6)));
-categ=[repmat(char('  WT  '),length(wyAnal(:,1)),1);...
-    repmat(char('Mutant'),length(muAnal(:,1)),1)];
 wildtypeOnes=ones(length(wyAnal(:,1)),1);
 mutantOnes=2.*ones(length(muAnal(:,1)),1);
 ytickUnit=p.Results.ytickUnitProb;
@@ -735,49 +734,85 @@ set(gcf,'position',[50 50 1500 450])
 for i=1:length(muAnal(1,:))
     r=1;c=length(muAnal(1,:))+p.Results.probPlotSize;
     subplot(r,c,i);
-    if ismember(i,[1 2 5])
-        unifiedAnal=[wyAnal(:,i);muAnal(:,i)];
-        boxplot(unifiedAnal,categ)
+    if ismember(i,[1 2])
+        set(gca,'XTick',[1 2],'XTickLabel',{'Left','Right'});
+        switch i
+            case 1
+                categ=[repmat(char('left '),length(wyAnal(:,i)),i);...
+                    repmat(char('right'),length(wyAnal(:,i+1)),i)];
+                unifiedAnal=[wyAnal(:,i);wyAnal(:,i+1)];
+                minYValue=min([wyAnal(:,i);wyAnal(:,i+1)]);
+                maxYValue=max([wyAnal(:,i);wyAnal(:,i+1)]);
+                scatter(wildtypeOnes,wyAnal(:,i),'jitter', 'on', 'jitterAmount', 0.06);
+                hold on
+                scatter(2.*wildtypeOnes,wyAnal(:,i+1),'jitter', 'on', 'jitterAmount', 0.06);
+                ylabel 'Wildtype Probability of Correct Responses'
+                
+            case 2
+                categ=[repmat(char('left '),length(muAnal(:,i-1)),1);...
+                    repmat(char('right'),length(muAnal(:,i)),1)];
+                unifiedAnal=[muAnal(:,i-1);muAnal(:,i)];
+                minYValue=min([muAnal(:,i-1);muAnal(:,i)]);
+                maxYValue=max([muAnal(:,i-1);muAnal(:,i)]);
+                scatter(mutantOnes./2,muAnal(:,i-1),'jitter', 'on', 'jitterAmount', 0.06);
+                hold on
+                scatter(mutantOnes,muAnal(:,i),'jitter', 'on', 'jitterAmount', 0.06);
+                ylabel 'Mutant Probability of Correct Responses'
+                
+%             case 5
+%                 categ=[repmat(char('  WT  '),length(wyAnal(:,1)),1);...
+%                     repmat(char('Mutant'),length(muAnal(:,1)),1)];
+%                 minYValue=min([wyAnal(:,i);muAnal(:,i)]);
+%                 maxYValue=max([wyAnal(:,i-1);muAnal(:,i)]);
+%                 unifiedAnal=[wyAnal(:,i);muAnal(:,i)];
+%                 ylabel 'Number of Switching Lever in One Session'
+%                 set(gca,'XTick',[1 2],'XTickLabel',{'WT','Mutant'});
+        end
         hold on
-        scatter(wildtypeOnes,wyAnal(:,i),'jitter', 'on', 'jitterAmount', 0.06);
-        scatter(mutantOnes,muAnal(:,i),'jitter', 'on', 'jitterAmount', 0.06);
-        minYValue=min([wyAnal(:,i);muAnal(:,i)]);
-        maxYValue=max([wyAnal(:,i);muAnal(:,i)]);
+        boxplot(unifiedAnal,categ)
         closestMin=minYValue-rem(minYValue,ytickUnit);
         closestMax=maxYValue-rem(maxYValue,ytickUnit)+ytickUnit;
         set(gca,'ylim',[closestMin closestMax])
-        switch i
-            case 1
-                ylabel 'Left-biased Probability of Correct Responses'
-            case 2
-                ylabel 'Right-biased Probability of Correct Responses'
-            case 5
-                ylabel 'Number of Switching Lever in One Session'
-        end
         if ismember(i,[1 2])
             set(gca,'ytick',closestMin:p.Results.ytickUnitProb:closestMax)
         else
             set(gca,'ytick',closestMin:p.Results.ytickUnitProbSwitch:closestMax)
         end
-        set(gca,'XTick',[1 2],'XTickLabel',{'WT','Mutant'});
         
     else
-        unified=([mean(wyAnal(:,i)) mean(muAnal(:,i))]);
-        wyStdError=std(wyAnal(:,i)/sqrt(sum(wyAnal(:,i))));
-        muStdError=std(muAnal(:,i)/sqrt(sum(muAnal(:,i))));
-        bar([1 2],unified)
-        hold on
-        errorbar(1,mean(wyAnal(:,i)),wyStdError,'k')
-        hold on
-        errorbar(2,mean(muAnal(:,i)),muStdError,'k')
+        yAxisRange=length(anal)/2+rem(length(anal),1);
+        posWy=(wyAnal>0);
+        posWyAnal=wyAnal(posWy(:,i),i);
+        posMu=(muAnal>0);
+        posMuAnal=muAnal(posMu(:,i),i);
+        negWy=(wyAnal<0);
+        negWyAnal=wyAnal(negWy(:,i),i);
+        negMu=(muAnal>0);
+        negMuAnal=muAnal(negMu(:,i),i);
+        posUnified=[sum(posWyAnal);sum(posMuAnal)];
+        negUnified=[sum(negWyAnal);sum(negMuAnal)];
+        bar([1 2],posUnified,'b')
         set(gca,'XTick',[1 2],'XTickLabel',{'WT','Mutant'});
         switch i
             case 3
-                ylabel 'Biased to One Side of a Lever Level'
-                set(gca,'ylim',[-1 1],'ytick',[-1 0 1],'YTickLabel',{'Right','None','Left'})
+                %               posYAxisTicks=num2cell(1:yAxisRange-1);
+                %               negYAxisTicks=num2cell(-(1:yAxisRange-1));
+                hold on
+                bar([1 2],negUnified,'b')
+                ylabel 'Numbers of Animals Having Better Performance at a Certain Side'
+                set(gca,'ylim',[-yAxisRange yAxisRange],'ytick',-yAxisRange:yAxisRange,...
+                    'yticklabel', {'Left','-5','-4','-3','-2','-1','None','1','2','3','4','5','Right'})
+                % {'Right',posYAxisTicks,'None',negYAxisTicks,'Left'}
             case 4
-                ylabel 'Probability of Rewards Above a Chance Level'
-                set(gca,'ylim',[closestMin closestMax])
+                ylabel 'Numbers of Animals Rewarded Above a Chance Level'
+                set(gca,'ylim',[0 yAxisRange])
+            case 5
+                unifiedAnal=[mean(wyAnal(:,i));mean(muAnal(:,i))];
+%                 stdUniWy=std(wyAnal(:,i)/sqrt(sum(wyAnal(:,i))));
+%                 stdUniMu=std(muAnal(:,i)/sqrt(sum(muAnal(:,i))));
+                bar([1 2],unifiedAnal)
+                % errorbar([1:2],[stdUniWy stdUniMu])
+                ylabel 'Number of Switching Lever in One Session'
         end
         if all(diff([wyAnal(:,i);muAnal(:,i)])~=0)
             if ttest2(wyAnal(:,i),muAnal(:,i))
@@ -809,7 +844,7 @@ stem(stepback+1,1,'LineStyle','--','marker','none','Color','k')
 ylabel('Probability of Correct Responses at The Reversal')
 xlabel('The Rewarded Lever Switched at 0')
 set(gca,'ylim',[0 1],'ytick',0:p.Results.ytickUnitProbSwitch:1,...
-        'xtick',1:length(wyProbRewAroundSwitches(1,:)),'xticklabel',xAxisTicks)
+    'xtick',1:length(wyProbRewAroundSwitches(1,:)),'xticklabel',xAxisTicks)
 legend('WT','Mutant','Lever Switch','location','southwest')
 legend('boxoff')
 box off
@@ -822,4 +857,39 @@ if ~isnan(hackerAnimals)
         'String',['Hacker Animal(s) in box: ' num2str(boxNum(hackerAnimals)') ' is/are excluded.'],...
         'HorizontalAlignment','center','FontSize',10,'FitBoxToText','off','EdgeColor','none');
 end
+end
+
+%%
+% ModelDrawer
+
+function modeldrawer(betaValuesInMat)
+stepback=5; % As used in the regression modeling function
+keep = ~any(betaValuesInMat>10,2);
+mBeta = mean(betaValuesInMat(keep,:));
+seBeta = std(betaValuesInMat(keep,:)/sqrt(sum(keep)));
+figure(3);clf
+set(gcf,'position',[50 50 700 450])
+errorbar(-stepback:1:-1,mBeta(2:1+stepback),seBeta(2:1+stepback),'b')
+hold on
+errorbar(-stepback:1:-1,mBeta(2+stepback:end),seBeta(2+stepback:end),'r')
+stem(0,'LineStyle','-.','marker','none','Color','k')
+legend('Reward Predictor','Non-Reward Predictor','Switching Threshold','location','northwest')
+legend('boxoff')
+box off
+set(gca,'ylim',[-1 2],'ytick',-1:1:2,'xlim',[-5.5 0.5],'xtick',-5:1:-1)
+ylabel('Regression Coefficient')
+xlabel('Trial Back')
+annotation(figure1,'arrow',[0.93 0.93],...
+    [0.4 0.67]);
+annotation(figure1,'arrow',[0.93 0.93],[0.37 0.22]);
+annotation(figure1,'textbox',...
+    [0.90 0.67 0.0646 0.047],...
+    'String',{'Stay'},...
+    'FitBoxToText','off',...
+    'EdgeColor','none');
+annotation(figure1,'textbox',...
+    [0.90 0.17 0.064 0.048],...
+    'String',{'Switch'},...
+    'FitBoxToText','off',...
+    'EdgeColor','none');
 end
