@@ -748,11 +748,11 @@ for i=1:length(muAnal(1,:))
         set(gca,'ylim',[closestMin closestMax])
         switch i
             case 1
-                ylabel 'Left-biased Probability of Correnct Responses'
+                ylabel 'Left-biased Probability of Correct Responses'
             case 2
-                ylabel 'Right-biased Probability of Correnct Responses'
+                ylabel 'Right-biased Probability of Correct Responses'
             case 5
-                ylabel 'Number of Switching in One Session'
+                ylabel 'Number of Switching Lever in One Session'
         end
         if ismember(i,[1 2])
             set(gca,'ytick',closestMin:p.Results.ytickUnitProb:closestMax)
