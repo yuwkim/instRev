@@ -1,4 +1,4 @@
-%% Reversal Learning Analyzer Ver 1.0 by YK
+%% Reversal Learning Analyzer Ver 0.82 by YK
 %
 % This is a set of scripts to analyze the result file of reversal learning
 % paradigm (motivated by Parker et al., 2016).
@@ -812,7 +812,7 @@ for i=1:length(muAnal(1,:))
 %                 stdUniMu=std(muAnal(:,i)/sqrt(sum(muAnal(:,i))));
                 bar([1 2],unifiedAnal)
                 % errorbar([1:2],[stdUniWy stdUniMu])
-                ylabel 'Number of Switching Lever in One Session'
+                ylabel 'Average Number of Switching Lever in One Session'
         end
         if all(diff([wyAnal(:,i);muAnal(:,i)])~=0)
             if ttest2(wyAnal(:,i),muAnal(:,i))
@@ -872,10 +872,10 @@ set(gcf,'position',[50 50 700 450])
 errorbar(-stepback:1:-1,mBeta(2:1+stepback),seBeta(2:1+stepback),'b')
 hold on
 errorbar(-stepback:1:-1,mBeta(2+stepback:end),seBeta(2+stepback:end),'r')
-stem(0,'LineStyle','-.','marker','none','Color','k')
-legend('Reward Predictor','Non-Reward Predictor','Switching Threshold','location','northwest')
+legend('Reward Predictor','Non-Reward Predictor','location','northwest')
 legend('boxoff')
 box off
+stem(2,0)
 set(gca,'ylim',[-1 2],'ytick',-1:1:2,'xlim',[-5.5 0.5],'xtick',-5:1:-1)
 ylabel('Regression Coefficient')
 xlabel('Trial Back')
