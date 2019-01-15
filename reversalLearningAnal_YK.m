@@ -142,8 +142,7 @@ if ~isempty(hackerAnimals)
 else
     finishedOrderHackerAnimal=nan;
 end
-save(fullfile(path,matFileName{1,1}),'data','anal','model','tagData','h','p','betaValuesInMat','rSquared','finishedOrderHackerAnimal');
-disp(['The processed data saved as ' fullfile(path,matFileName{1,1}) '.mat.']);
+
 % Data reading done.
 %
 fclose(fileID);
@@ -209,6 +208,10 @@ wildtyeValidAnimals=totAnimals(~ismember(totAnimals,mutantAnimals));
 nrTrainningDays=dataDrawer(data,tagData,finishedOrderHackerAnimal,mutantValidAnimals,wildtyeValidAnimals);
 analDrawer(anal,nrTrainningDays,tagData,finishedOrderHackerAnimal,mutantValidAnimals,wildtyeValidAnimals)
 modeldrawer(betaValuesInMat)
+
+%% saving data and their figures
+% 
+reversalSaver(path,matFileName{1,1})
 
 %% functions
 %
@@ -515,6 +518,7 @@ function [model,betaValuesInMat,rSquared,p,h]=logisticRegressor(data,varargin)
 % data: a struct array 'data' from the result of a function reversalReader.
 p=inputParser;
 p.addParameter('stepBack',5,@(x) x>0 && rem(x,1)==0);
+p.addParameter('showMedian',false,@islogical)
 p.parse(varargin{:});
 
 % preallocation of the struct array in the for-loop
@@ -578,16 +582,18 @@ for i=1:length(data)
     model(i).rSquared = 1-residualSumSquares./totalSumSquares;
     rSquared(i,1)=model(i).rSquared;
     betaValuesInMat(i,:)=model(i).betaS;
-    ordinal='th';
-    switch i
-        case 1
-            ordinal='st';
-        case 2
-            ordinal='nd';
-        case 3
-            ordinal='rd';
+    if p.Results.showMedian
+        ordinal='th';
+        switch i
+            case 1
+                ordinal='st';
+            case 2
+                ordinal='nd';
+            case 3
+                ordinal='rd';
+        end
+        disp(['R sqaured of '  num2str(i) ordinal ' animal is '  num2str(model(i).rSquared) '.'])
     end
-    disp(['R sqaured of '  num2str(i) ordinal ' animal is '  num2str(model(i).rSquared) '.'])
     
 end
 medianValue=median(rSquared);
@@ -609,6 +615,7 @@ p.addParameter('ytickUnitPress',20,@(x) x>0 && rem(x,1)==0);
 p.addParameter('ytickUnitProb',0.05,@(x) x>0);
 p.addParameter('ytickUnitSec',1,@(x) x>0 && rem(x,1)==0);
 p.addParameter('hacker',1,@(x) x>0 && rem(x,1)==0);
+p.addParameter('saveFigure',true,@islogical)
 p.parse(varargin{:});
 
 fieldsOfData={'totalReward','omission','totalTimeInSec','leftPress','rightPress','pctCorrect','avgRtInSec'};
@@ -883,4 +890,47 @@ annotation('arrow',[0.93 0.93],[0.4 0.67]);
 annotation('arrow',[0.93 0.93],[0.37 0.22]);
 annotation('textbox',[0.90 0.67 0.0646 0.047],'String',{'Stay'},'FitBoxToText','off','EdgeColor','none');
 annotation('textbox',[0.90 0.17 0.064 0.048],'String',{'Switch'},'FitBoxToText','off','EdgeColor','none');
+end
+%%
+% reversalSaver
+
+function reversalSaver(path,fileName,varargin)
+% Saving the result of reversal analyzer.
+% 
+% Input: fileLoc, the location including the name of the file. char
+% inputparser to change params.
+p=inputParser;
+p.addParameter('saveData',true,@islogical);
+p.addParameter('saveFigures',true,@islogical);
+p.addParameter('figureFormat','png',@ischar);
+p.addParameter('figureNum',3,@(x) x>0 && rem(x,1)==0); % by what number of figure you wanna save?
+p.parse(varargin{:});
+
+switch p.Results.figureFormat
+    case 'jpg'
+        p.Results.figureFormat='jpeg';
+    case 'tif'
+        p.Results.figureFormat='tiff';
+end
+
+if p.Results.saveData
+save(fullfile(path,fileName),'data','anal','model','tagData','h','p','betaValuesInMat',...
+             'rSquared','finishedOrderHackerAnimal');
+disp(['The processed data saved as ' fullfile(path,fileName) '.mat.']);
+end
+
+if p.Results.saveFigures
+    for i=1:p.Result.FigureNum
+        switch i
+            case 1
+                figrePrefix='RawDataFigure1_';
+            case 2
+                figrePrefix='AnalDataFigure2_';
+                case 3
+                figrePrefix='ModelDataFigure3_';
+        end
+    print(['-f' num2str(i)],fullfile(path,['Data' fileName]),['-d' p.Results.figureFormat])
+    disp(['The figure' num2str(i) ' is saved as ' fullfile(path,[figrePrefix fileName]) '.' p.Results.figureFormat '.']);
+    end
+end
 end
