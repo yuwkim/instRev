@@ -1,4 +1,4 @@
-%% Reversal Learning Analyzer Ver 0.98 by YK
+%% Reversal Learning Analyzer V 1.0 by YK
 %
 % This is a set of scripts to analyze the result file of reversal learning
 % paradigm (motivated by Parker et al., 2016).
@@ -393,7 +393,7 @@ end
 %%
 % logisticRegressor
 
-function [model,betaValuesInMat,rSquared,p,h]=logisticRegressor(data,varargin)
+function [model,betaValuesInMat,rSquared,p,h,stepback]=logisticRegressor(data,varargin)
 % this function does a logistic regression modeling to predict whether the
 % consequences in the previous trials affect the choice of the animal doing
 % the reversal learning. I am going to look back by 5 trials (Parker et
@@ -613,7 +613,7 @@ function analDrawer(anal,nrTrainningDays,tagData,hackerAnimals,mutantValidAnimal
 p=inputParser;
 p.addParameter('probPlotSize',3,@(x) x>0 && rem(x,1)==0);
 p.addParameter('ytickUnitProb',0.05,@(x) x>0);
-p.addParameter('ytickUnitProbSwitch',1,@(x) x>0);
+p.addParameter('ytickUnitProbSwitch',0.25,@(x) x>0);
 p.addParameter('ytickUnitPress',20,@(x) x>0 && rem(x,1)==0);
 p.parse(varargin{:});
 
@@ -760,27 +760,59 @@ end
 %%
 % ModelDrawer
 
-function modeldrawer(betaValuesInMat)
-stepback=5; % As used in the regression modeling function
-keep = ~any(betaValuesInMat>10,2);
-mBeta = mean(betaValuesInMat(keep,:));
-seBeta = std(betaValuesInMat(keep,:)/sqrt(sum(keep)));
-figure(3);clf
+function modeldrawer(model,betaValuesInMat,stepback,nrTrainningDays,tagData,hackerAnimals,mutantValidAnimals,wildtyeValidAnimals)
+boxNum=cat(1,model.boxNum);
+betaTable=[boxNum betaValuesInMat];
+muBetaTable=betaTable(ismember(boxNum,mutantValidAnimals),:);
+wyBetaTable=betaTable(ismember(boxNum,wildtyeValidAnimals),:);
+
+figure();clf
 set(gcf,'position',[50 50 700 450])
-errorbar(-stepback:1:-1,mBeta(2:1+stepback),seBeta(2:1+stepback),'b')
-hold on
-errorbar(-stepback:1:-1,mBeta(2+stepback:end),seBeta(2+stepback:end),'r')
-legend('Reward Predictor','Non-Reward Predictor','location','northwest')
+for j=1:2 % 1=WT 2=Mutant
+    switch j
+        case 1
+            subjectOfDrawer=wyBetaTable;
+            lineColor={'b','r'};
+        case 2
+            subjectOfDrawer=muBetaTable;
+            lineColor={'c','g'};
+    end
+    keep= (subjectOfDrawer<13&subjectOfDrawer>-10);
+    meanBeta=nan(1,length(subjectOfDrawer(1,:)));
+    steBeta=nan(1,length(subjectOfDrawer(1,:)));
+    
+    for i=1:length(subjectOfDrawer(1,:))
+        keeper=keep(:,i);
+        betaValues=subjectOfDrawer(:,i);
+        meanBeta(1,i)=mean(betaValues(keeper));
+        steBeta(1,i)=std(betaValues(keeper))/sqrt(sum(keeper));
+    end
+    errorbar(-stepback:1:-1,meanBeta(3:2+stepback),steBeta(3:2+stepback),lineColor{1,1})
+    hold on
+    errorbar(-stepback:1:-1,meanBeta(3+stepback:end),steBeta(3+stepback:end),lineColor{1,2})
+    hold on
+end
+
+legend('Wildtype Reward Predictor','Wildtype Non-Reward Predictor','Mutant Reward Predictor','Mutant Non-Reward Predictor','location','northwest')
 legend('boxoff')
 box off
-stem(2,0)
-set(gca,'ylim',[-1 2],'ytick',-1:1:2,'xlim',[-5.5 0.5],'xtick',-5:1:-1)
+set(gca,'ylim',[-2 3],'ytick',-2:1:3,'xlim',[-5.5 0.5],'xtick',-5:1:-1)
 ylabel('Regression Coefficient')
 xlabel('Trial Back')
+
 annotation('arrow',[0.93 0.93],[0.4 0.67]);
 annotation('arrow',[0.93 0.93],[0.37 0.22]);
 annotation('textbox',[0.90 0.67 0.0646 0.047],'String',{'Stay'},'FitBoxToText','off','EdgeColor','none');
 annotation('textbox',[0.90 0.17 0.064 0.048],'String',{'Switch'},'FitBoxToText','off','EdgeColor','none');
+
+annotation('textbox',[0.36 0.93 0.30 0.07],'VerticalAlignment','middle',...
+    'String',['The Analysis Result of Day ' num2str(nrTrainningDays) ' full version recording ' tagData],...
+    'LineStyle','none','HorizontalAlignment','center','FontSize',12,'FitBoxToText','on');
+if ~isnan(hackerAnimals)
+    annotation('textbox',[0.13 0.004 0.3 0.07],'VerticalAlignment','middle',...
+        'String',['Hacker Animal(s) in box: ' num2str(boxNum(hackerAnimals)') ' is/are excluded.'],...
+        'HorizontalAlignment','center','FontSize',10,'FitBoxToText','off','EdgeColor','none');
+end
 end
 %%
 % reversalSaver
@@ -834,7 +866,7 @@ tagData=tagData{1,1};
 % information from previous trials. Motivated from Parker et al., 2016.
 %
 %
-[model,betaValuesInMat,rSquared,pVal,h]=logisticRegressor(data); %#ok<ASGLU>
+[model,betaValuesInMat,rSquared,pVal,h,stepback]=logisticRegressor(data); %#ok<ASGLU>
 
 %%
 % By the unidentified bug, animals could hack the behavior program. It was
@@ -903,7 +935,7 @@ wildtyeValidAnimals=totAnimals(~ismember(totAnimals,mutantAnimals));
 %
 nrTrainningDays=dataDrawer(data,tagData,finishedOrderHackerAnimal,mutantValidAnimals,wildtyeValidAnimals);
 analDrawer(anal,nrTrainningDays,tagData,finishedOrderHackerAnimal,mutantValidAnimals,wildtyeValidAnimals)
-modeldrawer(betaValuesInMat)
+modeldrawer(model,betaValuesInMat,stepback,nrTrainningDays,tagData,finishedOrderHackerAnimal,mutantValidAnimals,wildtyeValidAnimals)
 
 %% saving part
 switch p.Results.figureFormat
