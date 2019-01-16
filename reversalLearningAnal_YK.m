@@ -766,7 +766,7 @@ betaTable=[boxNum betaValuesInMat];
 muBetaTable=betaTable(ismember(boxNum,mutantValidAnimals),:);
 wyBetaTable=betaTable(ismember(boxNum,wildtyeValidAnimals),:);
 
-figure();clf
+figure(3);clf
 set(gcf,'position',[50 50 700 450])
 for j=1:2 % 1=WT 2=Mutant
     switch j
@@ -777,7 +777,7 @@ for j=1:2 % 1=WT 2=Mutant
             subjectOfDrawer=muBetaTable;
             lineColor={'c','g'};
     end
-    keep= (subjectOfDrawer<13&subjectOfDrawer>-10);
+    keep= (subjectOfDrawer<3&subjectOfDrawer>-3);
     meanBeta=nan(1,length(subjectOfDrawer(1,:)));
     steBeta=nan(1,length(subjectOfDrawer(1,:)));
     
