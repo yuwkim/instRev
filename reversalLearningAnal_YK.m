@@ -1,4 +1,4 @@
-%% Reversal Learning Analyzer Ver 0.82 by YK
+%% Reversal Learning Analyzer Ver 0.98 by YK
 %
 % This is a set of scripts to analyze the result file of reversal learning
 % paradigm (motivated by Parker et al., 2016).
@@ -83,69 +83,16 @@ elseif ~contains(file,'.txt')
 else
     disp(['Analyzing ', fullfile(path, file)])
 end
-% the subject of analyzation will be appeard.
-%
-fileID = fopen([path file],'rt');
-tline=fgetl(fileID);
-% by doing this, the code will work on Mac including linux and PC the same.
-%
-if ismac || isunix
-    tlineTemp=strsplit(tline,'\');
-    tline=char(join(tlineTemp,'/'));
-end
-[pathT,fileT,ext]=fileparts(tline);
 
-%% Saving results
-% for taging the data. Let's take the date information from the data file.
-% and this information will be used to name the result mat file.
-%
-tagData=strsplit(file,'_');
-matFileName=strsplit(file,'.');
-tagData=tagData{1,1};
-%%
-% reading the data file by 'reversalReader' function.
-% it will make data struct which has organized basic raw data and a list of
-% animals using a bug of behavioral program.
-%
-[data,hackerAnimal2,hackerAnimal1]=reversalReader(fileID);
-%%
-% analyze the read data by 'reversalAnalyzer' function.
-% the output struct 'anal' will have basic analyzed information like biased
-% lever, onesample ttest, numbers of switching lever.
-%
-[anal,hackerAnimal3]=reversalAnalyzer(data);
-%%
-% use logistic regression model for analyzing and modeling the behavior of
-% animals with 'logsticRegression' function.
-% logistic regression provides that whether the animal updated the
-% information from previous trials. Motivated from Parker et al., 2016.
-%
-%
-[model,betaValuesInMat,rSquared,p,h]=logisticRegressor(data);
 
-%%
-% By the unidentified bug, animals could hack the behavior program. It was
-% a retracted lever pressing.
-%
-hackerAnimals=[hackerAnimal2;hackerAnimal1;hackerAnimal3];
-boxNum=cat(2,data.boxNum);
-if ~isempty(hackerAnimals)
-    switch length(hackerAnimal2)
-        case 1
-            be='is animal';
-        otherwise
-            be='are animals';
-    end
-    warning(['Type2 hacking! Zerotrial response! There ' be ' hacked the program, box number: ' num2str(boxNum(hackerAnimal2)) '. These animals are excluded in the data analysis.'])
-    %hackerAnimals=[hackerAnimal2;hackerAnimal1;hackerAnimal3];
-    finishedOrderHackerAnimal=unique(hackerAnimals);
-else
-    finishedOrderHackerAnimal=nan;
-end
 
-% Data reading done.
-%
-fclose(fileID);
+%% data saving!!!
+
+% this is the Master Controller!
+[~,fileT,~]=reversalSaver(path,file);
+% this is the Master Controller!
+
+
 
 
 %% Sanity checking
@@ -163,55 +110,11 @@ fclose(fileID);
 if ~contains(file,fileT)
     warning('this is NOT an original data txt file, the consequence of analysis is on you.')
 end
-%%
-% another sanity check.
-% behavior program version check.
-% using old version of behavior controlling program, by far there is no
-% issue other than pressing retracted lever--hacking behavior. This was
-% confirmed by video recording during behavior session.
-% However, just in case, I provided this info, too.
-%
-versionChecker=nan(length(data),1);
-for i=1:length(data)
-    versionChecker(i,1)=data(i).leftPress+data(i).rightPress+data(i).omission;
-end
-if any(~(versionChecker==150))
-    disp('this result file was from an old version before solving the hacking issue.')
-end
 
-%%
-% Valid Animal checking
-
-dataTable=struct2table(data);
-totAnimals=table2array(dataTable(:,2));
-boxNum=cat(1,data.boxNum);
-if ~isnan(finishedOrderHackerAnimal)
-    totAnimals(finishedOrderHackerAnimal)=[];
-end
-% based on my lab notes
-%
-if strcmp(tagData,'2018-11-20')
-    mutantAnimals=[2;3;4;5;8;12];
-elseif ismember(tagData,['2018-11-23','2018-11-26','2018-11-27'])
-    mutantAnimals=[4;5;9;10;11;12];
-elseif ismember(tagData,['2018-12-03','2018-12-04','2018-12-05'])
-    mutantAnimals=[3;4;5;7;8;12];
-else
-    mutantAnimals=[1;2;3;4;5;12];
-end
-mutantValidAnimals=intersect(mutantAnimals,totAnimals);
-wildtyeValidAnimals=totAnimals(~ismember(totAnimals,mutantAnimals));
-
-%% plotting starts!
-%
-
-nrTrainningDays=dataDrawer(data,tagData,finishedOrderHackerAnimal,mutantValidAnimals,wildtyeValidAnimals);
-analDrawer(anal,nrTrainningDays,tagData,finishedOrderHackerAnimal,mutantValidAnimals,wildtyeValidAnimals)
-modeldrawer(betaValuesInMat)
-
-%% saving data and their figures
-% 
-reversalSaver(path,matFileName{1,1})
+%% it is done!
+% hallelujah
+load handel
+sound(y,Fs)
 
 %% functions
 %
@@ -894,7 +797,7 @@ end
 %%
 % reversalSaver
 
-function reversalSaver(path,fileName,varargin)
+function [pathT,fileT,ext]=reversalSaver(path,file,varargin)
 % Saving the result of reversal analyzer.
 % 
 % Input: fileLoc, the location including the name of the file. char
@@ -906,6 +809,115 @@ p.addParameter('figureFormat','png',@ischar);
 p.addParameter('figureNum',3,@(x) x>0 && rem(x,1)==0); % by what number of figure you wanna save?
 p.parse(varargin{:});
 
+figureName=strsplit(file,'.');
+
+fileID = fopen([path file],'rt');
+tline=fgetl(fileID);
+% by doing this, the code will work on Mac including linux and PC the same.
+%
+if ismac || isunix
+    tlineTemp=strsplit(tline,'\');
+    tline=char(join(tlineTemp,'/'));
+end
+[pathT,fileT,ext]=fileparts(tline);
+
+%% taging the date of the result file
+% for taging the data. Let's take the date information from the data file.
+% and this information will be used to name the result mat file.
+%
+tagData=strsplit(file,'_');
+tagData=tagData{1,1};
+%%
+% reading the data file by 'reversalReader' function.
+% it will make data struct which has organized basic raw data and a list of
+% animals using a bug of behavioral program.
+%
+[data,hackerAnimal2,hackerAnimal1]=reversalReader(fileID);
+%%
+% analyze the read data by 'reversalAnalyzer' function.
+% the output struct 'anal' will have basic analyzed information like biased
+% lever, onesample ttest, numbers of switching lever.
+%
+[anal,hackerAnimal3]=reversalAnalyzer(data);
+%%
+% use logistic regression model for analyzing and modeling the behavior of
+% animals with 'logsticRegression' function.
+% logistic regression provides that whether the animal updated the
+% information from previous trials. Motivated from Parker et al., 2016.
+%
+%
+[model,betaValuesInMat,rSquared,pVal,h]=logisticRegressor(data); %#ok<ASGLU>
+
+%%
+% By the unidentified bug, animals could hack the behavior program. It was
+% a retracted lever pressing.
+%
+hackerAnimals=[hackerAnimal2;hackerAnimal1;hackerAnimal3];
+boxNum=cat(2,data.boxNum);
+if ~isempty(hackerAnimals)
+    switch length(hackerAnimal2)
+        case 1
+            be='is animal';
+        otherwise
+            be='are animals';
+    end
+    warning(['Type2 hacking! Zerotrial response! There ' be ' hacked the program, box number: ' num2str(boxNum(hackerAnimal2)) '. These animals are excluded in the data analysis.'])
+    %hackerAnimals=[hackerAnimal2;hackerAnimal1;hackerAnimal3];
+    finishedOrderHackerAnimal=unique(hackerAnimals);
+else
+    finishedOrderHackerAnimal=nan;
+end
+
+% Data reading done.
+%
+fclose(fileID);
+
+%%
+% another sanity check.
+% behavior program version check.
+% using old version of behavior controlling program, by far there is no
+% issue other than pressing retracted lever--hacking behavior. This was
+% confirmed by video recording during behavior session.
+% However, just in case, I provided this info, too.
+%
+versionChecker=nan(length(data),1);
+for i=1:length(data)
+    versionChecker(i,1)=data(i).leftPress+data(i).rightPress+data(i).omission;
+end
+if any(~(versionChecker==150))
+    disp('this result file was from an old version before solving the hacking issue.')
+end
+
+%%
+% Valid Animal checking
+
+dataTable=struct2table(data);
+totAnimals=table2array(dataTable(:,2));
+if ~isnan(finishedOrderHackerAnimal)
+    totAnimals(finishedOrderHackerAnimal)=[];
+end
+% based on my lab notes
+%
+if strcmp(tagData,'2018-11-20')
+    mutantAnimals=[2;3;4;5;8;12];
+elseif ismember(tagData,['2018-11-23','2018-11-26','2018-11-27'])
+    mutantAnimals=[4;5;9;10;11;12];
+elseif ismember(tagData,['2018-12-03','2018-12-04','2018-12-05'])
+    mutantAnimals=[3;4;5;7;8;12];
+else
+    mutantAnimals=[1;2;3;4;5;12];
+end
+mutantValidAnimals=intersect(mutantAnimals,totAnimals);
+wildtyeValidAnimals=totAnimals(~ismember(totAnimals,mutantAnimals));
+
+
+%% plotting part
+%
+nrTrainningDays=dataDrawer(data,tagData,finishedOrderHackerAnimal,mutantValidAnimals,wildtyeValidAnimals);
+analDrawer(anal,nrTrainningDays,tagData,finishedOrderHackerAnimal,mutantValidAnimals,wildtyeValidAnimals)
+modeldrawer(betaValuesInMat)
+
+%% saving part
 switch p.Results.figureFormat
     case 'jpg'
         p.Results.figureFormat='jpeg';
@@ -914,23 +926,22 @@ switch p.Results.figureFormat
 end
 
 if p.Results.saveData
-save(fullfile(path,fileName),'data','anal','model','tagData','h','p','betaValuesInMat',...
+save(fullfile(path,figureName{1,1}),'data','anal','model','tagData','h','pVal','betaValuesInMat',...
              'rSquared','finishedOrderHackerAnimal');
-disp(['The processed data saved as ' fullfile(path,fileName) '.mat.']);
+disp(['The processed data saved as ' fullfile(path,file) '.mat.']);
 end
-
 if p.Results.saveFigures
-    for i=1:p.Result.FigureNum
+    for i=1:p.Results.figureNum
         switch i
             case 1
-                figrePrefix='RawDataFigure1_';
+                figurePrefix='RawDataFigure1_';
             case 2
-                figrePrefix='AnalDataFigure2_';
+                figurePrefix='AnalDataFigure2_';
                 case 3
-                figrePrefix='ModelDataFigure3_';
+                figurePrefix='ModelDataFigure3_';
         end
-    print(['-f' num2str(i)],fullfile(path,['Data' fileName]),['-d' p.Results.figureFormat])
-    disp(['The figure' num2str(i) ' is saved as ' fullfile(path,[figrePrefix fileName]) '.' p.Results.figureFormat '.']);
+    print(['-f' num2str(i)],fullfile(path,[figurePrefix figureName{1,1}]),['-d' p.Results.figureFormat])
+    disp(['The figure' num2str(i) ' is saved as ' fullfile(path,[figurePrefix figureName{1,1}]) '.' p.Results.figureFormat '.']);
     end
 end
 end
