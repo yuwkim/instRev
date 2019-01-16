@@ -631,10 +631,13 @@ analTable=struct2table(anal);
 boxNum=cat(1,anal.boxNum);
 muAnalTable=analTable(ismember(boxNum,mutantValidAnimals),[4:7 10:11]);
 wyAnalTable=analTable(ismember(boxNum,wildtyeValidAnimals),[4:7 10:11]);
+
 muAnal=table2array(muAnalTable(:,1:5));
 wyAnal=table2array(wyAnalTable(:,1:5));
+
 muProbRewAroundSwitches=cell2mat(table2array(muAnalTable(:,6)));
 wyProbRewAroundSwitches=cell2mat(table2array(wyAnalTable(:,6)));
+
 wildtypeOnes=ones(length(wyAnal(:,1)),1);
 mutantOnes=2.*ones(length(muAnal(:,1)),1);
 ytickUnit=p.Results.ytickUnitProb;
@@ -668,15 +671,6 @@ for i=1:length(muAnal(1,:))
                 hold on
                 scatter(mutantOnes,muAnal(:,i),'jitter', 'on', 'jitterAmount', 0.06);
                 ylabel 'Mutant Probability of Correct Responses'
-                
-%             case 5
-%                 categ=[repmat(char('  WT  '),length(wyAnal(:,1)),1);...
-%                     repmat(char('Mutant'),length(muAnal(:,1)),1)];
-%                 minYValue=min([wyAnal(:,i);muAnal(:,i)]);
-%                 maxYValue=max([wyAnal(:,i-1);muAnal(:,i)]);
-%                 unifiedAnal=[wyAnal(:,i);muAnal(:,i)];
-%                 ylabel 'Number of Switching Lever in One Session'
-%                 set(gca,'XTick',[1 2],'XTickLabel',{'WT','Mutant'});
         end
         hold on
         boxplot(unifiedAnal,categ)
@@ -705,23 +699,17 @@ for i=1:length(muAnal(1,:))
         set(gca,'XTick',[1 2],'XTickLabel',{'WT','Mutant'});
         switch i
             case 3
-                %               posYAxisTicks=num2cell(1:yAxisRange-1);
-                %               negYAxisTicks=num2cell(-(1:yAxisRange-1));
                 hold on
                 bar([1 2],negUnified,'b')
                 ylabel 'Numbers of Animals Having Better Performance at a Certain Side'
                 set(gca,'ylim',[-yAxisRange yAxisRange],'ytick',-yAxisRange:yAxisRange,...
                     'yticklabel', {'Left','-5','-4','-3','-2','-1','None','1','2','3','4','5','Right'})
-                % {'Right',posYAxisTicks,'None',negYAxisTicks,'Left'}
             case 4
                 ylabel 'Numbers of Animals Rewarded Above a Chance Level'
                 set(gca,'ylim',[0 yAxisRange])
             case 5
                 unifiedAnal=[mean(wyAnal(:,i));mean(muAnal(:,i))];
-%                 stdUniWy=std(wyAnal(:,i)/sqrt(sum(wyAnal(:,i))));
-%                 stdUniMu=std(muAnal(:,i)/sqrt(sum(muAnal(:,i))));
                 bar([1 2],unifiedAnal)
-                % errorbar([1:2],[stdUniWy stdUniMu])
                 ylabel 'Average Number of Switching Lever in One Session'
         end
         if all(diff([wyAnal(:,i);muAnal(:,i)])~=0)
@@ -900,9 +888,9 @@ end
 %
 if strcmp(tagData,'2018-11-20')
     mutantAnimals=[2;3;4;5;8;12];
-elseif ismember(tagData,['2018-11-23','2018-11-26','2018-11-27'])
+elseif ismember(tagData,{'2018-11-23','2018-11-26','2018-11-27'})
     mutantAnimals=[4;5;9;10;11;12];
-elseif ismember(tagData,['2018-12-03','2018-12-04','2018-12-05'])
+elseif ismember(tagData,{'2018-12-03','2018-12-04','2018-12-05'})
     mutantAnimals=[3;4;5;7;8;12];
 else
     mutantAnimals=[1;2;3;4;5;12];
