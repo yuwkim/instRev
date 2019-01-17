@@ -256,9 +256,7 @@ for j=1:nrAnimals
                 data(j).programName=lineTaker(tline,'MSN:');
             case 'D'
                 data(j).totalTrial=str2double(lineTaker(tline,'D:'));
-                if data(j).totalTrial>150 % session ends at >151 trials, so the 151 trial initiated but not completed.
-                    data(j).totalTrial=150;
-                end
+                data(j).totalTrial=data(j).totalTrial-1; % trial stops at incompleted tot+1 trial.
             case 'Q'
                 data(j).totalReward=str2double(lineTaker(tline,'Q:'));
             case 'R'
