@@ -1,4 +1,4 @@
-%% Reversal Learning Analyzer V 1.0 by YK
+%% Reversal Learning Analyzer V 1.1 by YK
 %
 % This is a set of scripts to analyze the result file of reversal learning
 % paradigm (motivated by Parker et al., 2016).
@@ -68,7 +68,7 @@ warning('off','backtrace')
 % Since the name of the result file is long, I decided to make it with
 % (GUI) clicking the file.
 %
-[file,path,indx] = uigetfile('*.txt');
+[file,path,indx] = uigetfile('*.txt','Select One or More Files','MultiSelect', 'on');
 % if the user did not choose a txt file to analyze, the script will be
 % stopped runing. If the chosen file is not a txt file, it will also stop,
 % saying to choose a txt file.
@@ -80,36 +80,48 @@ if isequal(file,0)
 elseif ~contains(file,'.txt')
     warning('This only can analyze text files.')
     return
+elseif length(string(file))>1
+    for i=1:length(string(file))
+        disp(['Analyzing ', fullfile(path, file{1,i})])
+        [~,fileT,~]=reversalSaver(path,file{1,i});
+        %% Sanity checking
+        % one sanity checking.
+        % if the subject of analysis is not an original text file from my behavior
+        % software, the warning message will be appeared, but the process will keep
+        % going on.
+        % this works because, the original data file from MED-PC software always
+        % includes information like this in the first line of the data file
+        %
+        % File: C:\MED-PC\Data\2018-11-16_15h09m_Subject .txt
+        %
+        % And, this info is supposed to match with the title of the data file.
+        %
+        if ~contains(file{1,i},fileT)
+            warning('this is NOT an original data txt file, the consequence of analysis is on you.')
+        end
+    end
 else
-    disp(['Analyzing ', fullfile(path, file)])
+    for i=1:length(string(file))
+        disp(['Analyzing ', fullfile(path, file)])
+        [~,fileT,~]=reversalSaver(path,file);
+        %% Sanity checking
+        % one sanity checking.
+        % if the subject of analysis is not an original text file from my behavior
+        % software, the warning message will be appeared, but the process will keep
+        % going on.
+        % this works because, the original data file from MED-PC software always
+        % includes information like this in the first line of the data file
+        %
+        % File: C:\MED-PC\Data\2018-11-16_15h09m_Subject .txt
+        %
+        % And, this info is supposed to match with the title of the data file.
+        %
+        if ~contains(file,fileT)
+            warning('this is NOT an original data txt file, the consequence of analysis is on you.')
+        end
+    end    
 end
 
-
-
-%% data saving!!!
-
-% this is the Master Controller!
-[~,fileT,~]=reversalSaver(path,file);
-% this is the Master Controller!
-
-
-
-
-%% Sanity checking
-% one sanity checking.
-% if the subject of analysis is not an original text file from my behavior
-% software, the warning message will be appeared, but the process will keep
-% going on.
-% this works because, the original data file from MED-PC software always
-% includes information like this in the first line of the data file
-%
-% File: C:\MED-PC\Data\2018-11-16_15h09m_Subject .txt
-%
-% And, this info is supposed to match with the title of the data file.
-%
-if ~contains(file,fileT)
-    warning('this is NOT an original data txt file, the consequence of analysis is on you.')
-end
 
 %% it is done!
 % hallelujah
@@ -947,7 +959,7 @@ end
 
 if p.Results.saveData
 save(fullfile(path,figureName{1,1}),'data','anal','model','tagData','h','pVal','betaValuesInMat',...
-             'rSquared','finishedOrderHackerAnimal');
+             'rSquared','finishedOrderHackerAnimal','nrTrainningDays');
 disp(['The processed data saved as ' fullfile(path,file) '.mat.']);
 end
 if p.Results.saveFigures
