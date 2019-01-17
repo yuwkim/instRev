@@ -80,10 +80,11 @@ if isequal(file,0)
 elseif ~contains(file,'.txt')
     warning('This only can analyze text files.')
     return
-elseif length(string(file))>1
+else
+    subjectOfAnal=string(file);
     for i=1:length(string(file))
-        disp(['Analyzing ', fullfile(path, file{1,i})])
-        [~,fileT,~]=reversalSaver(path,file{1,i});
+        disp(['Analyzing ', fullfile(path, char(subjectOfAnal(1,i)))])
+        [~,fileT,~]=reversalSaver(path, char(subjectOfAnal(1,i)));
         %% Sanity checking
         % one sanity checking.
         % if the subject of analysis is not an original text file from my behavior
@@ -96,30 +97,10 @@ elseif length(string(file))>1
         %
         % And, this info is supposed to match with the title of the data file.
         %
-        if ~contains(file{1,i},fileT)
+        if ~contains(char(subjectOfAnal(1,i)),fileT)
             warning('this is NOT an original data txt file, the consequence of analysis is on you.')
         end
     end
-else
-    for i=1:length(string(file))
-        disp(['Analyzing ', fullfile(path, file)])
-        [~,fileT,~]=reversalSaver(path,file);
-        %% Sanity checking
-        % one sanity checking.
-        % if the subject of analysis is not an original text file from my behavior
-        % software, the warning message will be appeared, but the process will keep
-        % going on.
-        % this works because, the original data file from MED-PC software always
-        % includes information like this in the first line of the data file
-        %
-        % File: C:\MED-PC\Data\2018-11-16_15h09m_Subject .txt
-        %
-        % And, this info is supposed to match with the title of the data file.
-        %
-        if ~contains(file,fileT)
-            warning('this is NOT an original data txt file, the consequence of analysis is on you.')
-        end
-    end    
 end
 
 
